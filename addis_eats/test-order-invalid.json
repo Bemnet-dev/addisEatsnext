@@ -1,0 +1,8 @@
+{
+  "customerName": "1234",
+  "phone": "0912345678",
+  "address": "Bole Road",
+  "items": [
+    { "id": "d1", "name": "X", "price": 100, "qty": 1 }
+  ]
+}

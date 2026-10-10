@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8faf8;
+  --foreground: #17211b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-neutral-950: #ffffff;
+  --color-neutral-900: #f5f8f6;
+  --color-neutral-800: #e2e8e4;
+  --color-neutral-700: #c6d0ca;
+  --color-neutral-500: #637169;
+  --color-neutral-400: #526159;
+  --color-neutral-300: #3f4d45;
+  --color-neutral-200: #2e3a32;
+  --color-neutral-100: #17211b;
+  --color-amber-300: #15803d;
+  --color-amber-400: #15803d;
+  --color-amber-500: #166534;
+  --color-emerald-300: #0369a1;
+  --color-emerald-400: #0284c7;
+  --color-emerald-500: #38bdf8;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
+}

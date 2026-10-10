@@ -1,0 +1,8 @@
+{
+  "customerName": "Abebe Kebede",
+  "phone": "0912345678",
+  "address": "Bole Road, Addis Ababa",
+  "items": [
+    { "id": "d1", "name": "Crispy Sambusa", "price": 100, "qty": 1 }
+  ]
+}
