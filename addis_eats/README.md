@@ -102,14 +102,21 @@ Full detail, with the exact line that refuses each call: **AUTH.md**.
   debounced term exists (one request per pause, not per keystroke), seeded with server `dishes`
 - **Something to poll:** `/kitchen` now has status controls, so the status actually changes during the demo
 
-### 5. Performance ✅ (documented, including the two misses)
+### 5. Performance ✅ (documented, including the one miss)
 - `next/image` with pre-cropped WebP assets, `priority` + `fetchPriority="high"` on the LCP image only
 - `next/font/google` for Geist: self-hosted, no runtime font request, CLS stays 0
 - `prefetch={false}` on every `<Link>`; social images are generated on request and never load with the page
-- Lighthouse (production build, mobile throttling): **94 / 97 / 97** — brief target ≥ 90 ✅
-- CLS **0** ✅ · largest image **132.7 kB** ✅ · LCP 2.2–2.7 s (target < 2.5 s: 1 of 3 routes) ⚠️
-- First Load JS ~180–200 kB gzipped (target < 120 kB) ❌ — React 19 + Next 16 baseline, explained in
-  **PERF.md** with the before/after budget table
+- **Lighthouse on the deployed build** (Lighthouse CLI, mobile, simulated throttling, 2026-10-10):
+
+  | Route | Performance | LCP | CLS | SEO |
+  | --- | ---: | ---: | ---: | ---: |
+  | `/` | **95** | 1.60 s | 0 | 100 |
+  | `/menu` | **96** | 2.20 s | 0 | 100 |
+  | `/menu/special-doro-wat` | **97** | 2.28 s | 0 | 100 |
+
+- Targets: performance ≥ 90 ✅ · LCP < 2.5 s ✅ · CLS < 0.1 ✅ · largest image < 150 kB ✅ (132.7 kB)
+- First Load JS `/menu` = **156.2 kB** transferred (target < 120 kB) ❌ — React 19 + Next 16 baseline,
+  explained in **PERF.md** together with the before/after budget table (baseline was 81, now 96)
 
 ### 6. Discovery ✅
 - `metadataBase` set from `src/lib/site.js` → always `https://addiseatsnext.vercel.app`

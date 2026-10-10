@@ -238,6 +238,9 @@ Run against a production build (`npm run build && npm run start`) and the deploy
 | Price integrity | `POST /api/orders` with `price: 1` | stored as `450`, `customerName` overwritten |
 | Unknown dish id | `POST /api/orders` with `id: "nope"` | `422 {"error":"Cart items could not be matched to the menu."}` |
 | Open redirect | `/signin?next=https://example.com` | redirected to `/` after sign-in |
+| **Deployed** proxy | `curl -I https://addiseatsnext.vercel.app/orders` (signed out) | `307 /signin?next=%2Forders` |
+| **Deployed** console attacks | `cancelOrder` / `updateOrderStatus` found in `/_next/static/immutable/chunks/0rfin9nytpukl.js` | both actions reachable from the live console |
+| Lighthouse (deployed) | Lighthouse CLI vs `https://addiseatsnext.vercel.app` | perf 95/96/97, LCP 1.60/2.20/2.28 s, CLS 0 — numbers in PERF.md |
 | Lint / build | `npx eslint src`, `npm run build` | clean, no warnings |
 
 ---

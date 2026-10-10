@@ -5,38 +5,48 @@
 ## Budget table (Day 45 brief targets)
 
 Filled twice — before optimisation and after — because the improvement *is* the evidence.
+**"After" = Lighthouse on the deployed build** (`https://addiseatsnext.vercel.app`), 2026-10-10.
 
-| Measure | Target | Before | After | Status |
+| Measure | Target | Before | After (deployed) | Status |
 | --- | --- | ---: | ---: | --- |
-| Lighthouse performance, `/menu` (mobile throttle) | ≥ 90 | **81** | **94** | ✅ |
-| Lighthouse performance, `/` | ≥ 90 | not captured | **97** | ✅ |
+| Lighthouse performance, `/menu` | ≥ 90 | **81** | **96** | ✅ |
+| Lighthouse performance, `/` | ≥ 90 | not captured | **95** | ✅ |
 | Lighthouse performance, `/menu/[slug]` | ≥ 90 | not captured | **97** | ✅ |
-| LCP, `/menu` (simulated mobile) | < 2.5 s | 1.8 s *(text-only baseline)* | **2.7 s** | ❌ documented below |
-| LCP, `/` | < 2.5 s | not captured | **2.2 s** | ✅ |
-| LCP, `/menu/[slug]` | < 2.5 s | not captured | **2.6 s** | ❌ documented below |
-| CLS | < 0.1 | **0** | **0** | ✅ |
-| First Load JS, `/menu` | < 120 kB | — | **~180–200 kB gzipped** (598 kB raw across 12 chunks) | ❌ documented below |
-| Largest image on disk | < 150 kB | — | **132.7 kB** (`bbq-chicken-pizza.webp`) | ✅ |
+| LCP, `/menu` (simulated mobile) | < 2.5 s | 1.8 s *(text-only baseline)* | **2.20 s** | ✅ |
+| LCP, `/` | < 2.5 s | not captured | **1.60 s** | ✅ |
+| LCP, `/menu/[slug]` | < 2.5 s | not captured | **2.28 s** | ✅ |
+| CLS (all routes) | < 0.1 | **0** | **0** | ✅ |
+| First Load JS, `/menu` | < 120 kB | — | **156.2 kB** transferred (12 scripts; 598 kB raw) | ❌ documented below |
+| Largest image on disk | < 150 kB | — | **132.7 kB** (`bbq-chicken-pizza.webp`; 20.2 kB largest transfer) | ✅ |
 
 **Rules this table follows**
 
-- A miss is written down with its cause instead of being hidden. Two targets are missed; both are
-  framework-bound, not sloppiness (see "Why each number moved" and "Why the misses are structural").
+- A miss is written down with its cause instead of being hidden. One target is missed; it is
+  framework-bound, not sloppiness (see "Why First Load JS is structural").
 - The "before" column for `/` and `/menu/[slug]` was genuinely not captured — the baseline run was taken on
   the original text-only `/menu`, so those cells stay empty rather than invented.
 
-### Honest reading of the LCP row
+### Deployed report — 2026-10-10 (Lighthouse CLI, mobile, simulated throttling)
 
-The 1.8 s → 2.7 s movement on `/menu` is **not** a regression: the baseline page had no photographs at all.
-Once real dish photos were added (a requirement — images are part of the product), the LCP element changed
-from a headline to a photo, and the number moved with it. The comparison that matters is *photographs
-before optimisation* vs *photographs after optimisation*, which is the "priority fix" row below
-(2.4 s → 1.8 s on the same build). The latest Lighthouse run (2.7 s) is a different, later build measured
-with DevTools' own throttling profile; two of three routes sit within 0.1–0.2 s of the 2.5 s target.
+| Route | Performance | Accessibility | Best Practices | SEO | FCP | LCP | CLS | TBT |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `/` | **95** | 100 | 100 | 100 | 1.25 s | **1.60 s** | 0 | 220 ms |
+| `/menu` | **96** | 96 | 100 | 100 | 1.11 s | **2.20 s** | 0 | 191 ms |
+| `/menu/special-doro-wat` | **97** | 95 | 100 | 100 | 1.01 s | **2.28 s** | 0 | 144 ms |
 
-**Next measurement:** re-run Lighthouse against the deployed URL above (DevTools → Lighthouse → Mobile →
-Performance) and paste the numbers here. The brief asks for the *deployed build*, because localhost has no
-CDN, no Brotli and no HTTP/2.
+Transfer measured on `/menu`: 12 script files = **156.2 kB**; 4 images = 66.8 kB; whole page = 273.7 kB.
+
+**What the deployment changed.** The localhost run (2.6–2.7 s LCP, 560–760 ms TBT) missed the 2.5 s target;
+the same pages on Vercel pass it. The hypothesis written in the previous revision — CDN, Brotli and HTTP/2
+versus a single local Node process with no compression pipeline — is confirmed by measurement, not assumed.
+
+### Honest reading of the earlier localhost numbers
+
+The 1.8 s → 2.7 s movement seen on `localhost` was **not** a regression: the 1.8 s baseline page had no
+photographs at all. Once real dish photos were added (a requirement — images are part of the product), the
+LCP element changed from a headline to a photo. The comparison that matters is *photographs before
+optimisation* vs *photographs after optimisation* (2.4 s → 1.8 s from the `priority` fix alone), and
+ultimately the deployed figures above.
 
 ---
 
@@ -81,18 +91,15 @@ value), which is why shared links carried no image.
 
 ## JS bundle sizes (production build)
 
-First Load JS for `/menu`: **598 kB raw across 12 script chunks → ~180–200 kB gzipped.**
-
-| Chunk group | Uncompressed |
+| View | `/menu` script payload |
 | --- | ---: |
-| Largest (React + framework) | ~224 kB |
-| Hydration/router | ~131 kB |
-| Shared application components | ~110 kB |
-| Remaining chunks | ~133 kB |
+| **Transferred (deployed, gzip/Brotli over HTTP/2)** | **156.2 kB across 12 scripts** |
+| Raw uncompressed (local build, all chunks) | ~598 kB across 12 chunks |
 
-The brief's target is < 120 kB. The React 19 + Next.js 16 baseline accounts for most of this payload; it
-cannot be removed without changing framework or dropping a dependency. Recorded as a **miss with a cause**,
-which the brief accepts in preference to an unexplained number.
+The brief's target is < 120 kB First Load JS. The transferred figure misses it by ~36 kB; the three
+largest chunks are the React 19 + Next.js 16 baseline, which cannot be removed without changing framework
+or dropping a dependency. Recorded as a **miss with a cause**, which the brief accepts in preference to an
+unexplained number.
 
 Note on `optimizePackageImports`: earlier revisions of this document claimed
 `optimizePackageImports: ["swr", "zod"]` was set in `next.config.mjs`. Next.js 16 (Turbopack) **removed
@@ -104,9 +111,12 @@ has been removed from this file and from README.md.
 
 ## Lighthouse measurements
 
-All runs: production build, Chrome DevTools Lighthouse, **simulated mobile throttling**, navigation mode.
+**Current: see "Deployed report — 2026-10-10" at the top of this file.** The runs below are the localhost
+history that documents what changed and when.
 
-### Latest report — 2026-10-08 (localhost production build)
+All runs: production build, Chrome DevTools / Lighthouse CLI, **simulated mobile throttling**.
+
+### Localhost report — 2026-10-08 (superseded by the deployed report above)
 
 | Route | Performance | Accessibility | Best Practices | SEO | LCP |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -167,23 +177,22 @@ brief's "server data seeds the client query" requirement.
 
 ---
 
-## Why the two misses are structural
+## Why First Load JS is structural
 
-**First Load JS (~180–200 kB gzipped vs a 120 kB target).** The three largest chunks are the React 19 +
-Next.js 16 runtime. Under simulated mobile throttling that baseline costs 500–760 ms of main-thread time
-regardless of how small the application code is. Reducing it further means removing a dependency (SWR is
-~14 kB) or changing framework version — both out of scope for a build whose point is the architecture.
+**156.2 kB transferred vs a 120 kB target.** The three largest chunks are the React 19 + Next.js 16
+runtime; under simulated mobile throttling that baseline costs 144–220 ms of main-thread time (down from
+560–760 ms on localhost once compression and the CDN are in play) regardless of how small the application
+code is. Reducing it further means removing a dependency (SWR is ~14 kB) or changing framework version —
+both out of scope for a build whose point is the architecture.
 
-**LCP 2.6–2.7 s on two routes (target < 2.5 s).** The measurements above are localhost runs with no CDN,
-no Brotli and no HTTP/2; `npm run start` serves a single Node process, which is what Lighthouse's
-worst-case simulation models. Expected to improve on the deployed URL, which is exactly why the brief asks
-for the number to be taken from the deployed build.
+**LCP is no longer a miss.** The localhost runs that previously reported 2.6–2.7 s were measuring a single
+local Node process with no CDN, no Brotli and no HTTP/2 — exactly what Lighthouse's worst-case simulation
+models. Measured on the deployed build, all three routes land at 1.60–2.28 s against a 2.5 s target.
 
-**What would move them, in order of payoff:**
-1. Re-measure on the deployed build (free — do this first).
-2. Replace SWR with React's `use` hook + streamed Server Components (−~14 kB client JS).
-3. Split the root layout's session check so the header hydrates independently of page content.
-4. Decouple the auth UI from the root layout to re-enable static/ISR rendering of `/` and `/menu`
+**What would move First Load JS, in order of payoff:**
+1. Replace SWR with React's `use` hook + streamed Server Components (−~14 kB client JS).
+2. Split the root layout's session check so the header hydrates independently of page content.
+3. Decouple the auth UI from the root layout to re-enable static/ISR rendering of `/` and `/menu`
    (currently every route is dynamic — documented in DATA.md).
 
 ---
@@ -192,10 +201,10 @@ for the number to be taken from the deployed build.
 
 | Check | Result |
 | --- | --- |
-| Lighthouse performance ≥ 90 | ✅ 94 / 97 / 97 |
-| LCP < 2.5 s | ⚠️ 1 of 3 routes (2.2 s); 2.6 / 2.7 s on the others — cause documented above |
-| CLS < 0.1 | ✅ 0 |
-| First Load JS `/menu` < 120 kB | ❌ ~180–200 kB gzipped — framework baseline, documented |
-| Largest image < 150 kB | ✅ 132.7 kB |
+| Lighthouse performance ≥ 90 | ✅ **95 / 96 / 97** on the deployed build |
+| LCP < 2.5 s | ✅ **1.60 s / 2.20 s / 2.28 s** (all three routes) |
+| CLS < 0.1 | ✅ 0 on all three routes |
+| First Load JS `/menu` < 120 kB | ❌ 156.2 kB transferred — React 19 + Next 16 baseline, documented above |
+| Largest image < 150 kB | ✅ 132.7 kB on disk (20.2 kB largest transfer) |
 | Before **and** after recorded | ✅ budget table at the top |
-| Measured on the deployed build | ⚠️ re-run pending — see "Next measurement" |
+| Measured on the deployed build | ✅ Lighthouse CLI run against `https://addiseatsnext.vercel.app` on 2026-10-10 |
