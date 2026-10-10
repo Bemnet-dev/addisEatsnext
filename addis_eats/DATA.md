@@ -1,35 +1,80 @@
-# Addis Eats Data & Fetching
+# Addis Eats — Data & Fetching
 
-This project follows the week-9 rule: server whenever the person is not triggering the query, and client only for interaction-driven reads that must refresh from input.
+**Live app:** https://addiseatsnext.vercel.app · Last verified 2026-10-10 against a production build.
 
-## Route and data map
+This project follows the week-9 rule: **server whenever the person is not triggering the query, client
+only for interaction-driven reads that must refresh from input.**
 
-| Area | Where it runs | Key | Refresh rule | Why |
+## The rule, applied
+
+| Data | Where it runs | Key / entry point | Refresh rule | Why (one line) |
 | --- | --- | --- | --- | --- |
-| Menu and dishes | Server | `getDishes()` in `src/lib/dishes.js` | The page sets `revalidate = 3600`, but the cookie-reading root layout currently makes routes dynamic | Public content, indexable; decouple auth UI from the root layout before expecting static/ISR delivery |
-| Order history | Server | `getOrders().filter(...)` in `src/app/orders/page.js` | Server-rendered per request | Personal data must be scoped to the signed-in user |
-| Live order status | Server then client | `OrderStatusClient` in `src/app/orders/[id]/OrderStatusClient.jsx` | Poll every 5s with `refreshInterval` | The view is user-specific but the status should refresh without a full reload |
-| Menu search | Client | `useSWR` + debounced input in `src/app/menu/FilterShell.jsx` | Trigger after 350ms pause | Typing is user-driven; per-keystroke requests are wasteful |
+| Menu and dishes | Server | `getDishes()` in `src/lib/dishes.js` | `revalidate = 3600` is exported, but the root layout reads the session cookie, so the route renders dynamically | Public content, indexable, cacheable — and the trade-off is documented rather than hidden |
+| Order history | Server | `getOrders()` + scoped filter in `src/app/orders/page.js:16-18` | Rendered per request (dynamic) | Personal data must be scoped to the signed-in user |
+| Order detail / ownership | Server | `getOrderById(id)` in `src/app/orders/[id]/page.js:22` | Rendered per request | The id is looked up first, then authorised; a mismatch is a 404 |
+| Live order status | Server first, then client | `OrderStatusClient.jsx` → `GET /api/orders/[id]` | SWR `refreshInterval` 5 s, stops on `delivered`/`cancelled` | The view is user-specific, but the status must refresh without a full reload |
+| Menu search | Client | `useSWR` key `/api/dishes?search=…&page=…` in `FilterShell.jsx:35-37` | Key is `null` until the debounced term exists → one request per 350 ms pause | Typing is user-driven; per-keystroke requests are wasteful |
+| Kitchen queue | Server | `getOrders()` in `src/app/kitchen/page.js` | Rendered per request | Staff-only, role-checked in the proxy and the page |
 | Cart | Client store | `src/lib/providers.jsx` | Local component state | Cart contents stay in-browser and never need server persistence |
-| Checkout and order creation | Server action | `placeOrder` in `src/app/actions.js` | One write on submit | The action verifies the signed-in user before writing |
+| Checkout / order creation | Server action | `placeOrder` in `src/app/actions.js` | One write on submit | The action verifies the session, overwrites `customerName`, and re-prices items from the catalogue |
+| Kitchen status change | Server action | `updateOrderStatus` in `src/app/actions.js:156` | One write per click, then `revalidatePath` | Staff-only role check lives inside the action, not in the UI |
+
+## Keys and why they are shaped that way
+
+```js
+// Search: null key = SWR does nothing until the user actually searched
+const searchKey = searchValue ? `/api/dishes?search=${encodeURIComponent(searchValue)}&page=${safePage}` : null;
+
+// Status: one stable key per order, so the poll and the seed share a cache entry
+useSWR(`/api/orders/${order.id}`, fetcher, { fallbackData: order, refreshInterval: … });
+```
+
+## Seed strategy (no spinner for data we already had)
+
+| Client query | Server seed passed in |
+| --- | --- |
+| Menu search (`FilterShell.jsx:40-44`) | `fallbackData: { dishes: initialDishes, totalPages, totalItems }` from the server-rendered page |
+| Order status (`OrderStatusClient.jsx:15-16`) | `fallbackData: order` fetched and ownership-checked on the server |
+
+Verified: loading `/orders/<id>` paints the order immediately — the "Refreshing order status…" line only
+appears during a poll, never as an arrival state.
 
 ## Ownership rules
 
-- `/orders` and `/orders/[id]` only show records for the current session.
-- Staff users can see all orders; customer users can only view their own.
-- Any action that mutates order state must re-check ownership before it runs.
+- `/orders` shows only the current session's records (staff see all, by decision — see AUTH.md).
+- `/orders/[id]` and `/checkout/success` return the not-found page for an id that is not yours.
+- `placeOrder` and `POST /api/orders` overwrite `customerName` with the session value.
+- Item `name` and `price` are **never** taken from the client: `normaliseOrderItems()` re-reads them from
+  the dish catalogue, so a crafted body with `price: 1` is stored at the real price (verified: 450).
+- Every mutating action re-checks session (and role, and ownership) before it writes.
 
-## Seed strategy
+## Storage: one process, one array — shared on purpose
 
-Where a client-only fetch is unavoidable, the app seeds the first result on the server and passes it as `fallbackData` to SWR. This prevents a visible spinner on data we already have.
+`src/lib/orders.js` keeps orders in an array hung off `globalThis.__ADDIS_EATS_ORDERS__`.
 
-## Demo storage limitation
+**Why `globalThis`:** Next.js bundles server code per entrypoint — pages/Server Components/Server Actions
+and Route Handlers end up in different chunks. With a plain `export const orders = []` the array was
+evaluated **twice**, so orders placed in checkout were invisible to `GET /api/orders/[id]` (the live poll)
+and orders created through the API were invisible to `/orders` and `/kitchen`. This was found during the
+2026-10-10 audit by grepping the build output:
 
-`src/lib/orders.js` stores orders in a process-local array. Orders can disappear on process restart and are not shared across serverless instances, so order history and ownership checks are suitable for a local demo only. Persist orders and associate them with a stable user ID in a database before relying on them in a deployed app.
+```
+.next/server/chunks/ssr/[root-of-the-server]__1lpywbr._.js   ← pages/actions copy
+.next/server/chunks/_0he5n4h._.js                             ← route-handler copy
+```
+
+Hanging the array off `globalThis` gives every bundle the same store, the way a database connection is
+shared. After the fix, an order created through the API appears on `/orders` and in `/kitchen` in the same
+process (verified in the log in AUTH.md).
+
+**Limitation:** the store is still per-process. Orders reset on restart and are not shared between
+serverless instances — persist them in a database before relying on this outside a demo.
 
 ## Data decisions summary
 
-- Public menu data stays server-side; the root layout's session lookup currently prevents the route from being statically rendered.
+- Public menu data stays server-side; the root layout's session lookup keeps the route dynamic — a
+  documented trade-off, not an accident.
 - Personal order data stays scoped to the session.
-- Search and live status are the only client-driven reads.
-- Client state is used only for cart behavior and UI interaction, never for private data.
+- Search and live status are the only client-driven reads, and both are seeded from the server.
+- Client state is used only for cart behaviour and UI interaction, never for private data.
+- Prices are computed on the server; the client only supplies ids and quantities.

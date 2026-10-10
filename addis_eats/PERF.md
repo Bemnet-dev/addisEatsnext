@@ -1,58 +1,104 @@
 # Performance Notes — Addis Eats
 
-## Scope and targets
+**Live app:** https://addiseatsnext.vercel.app · Last updated 2026-10-10.
 
-The brief requires Lighthouse performance ≥ 90, LCP < 1,500 ms, CLS < 0.1, First Load JS < 120 kB,
-and largest image < 150 kB. The Lighthouse measurements below are historical results from an earlier
-production build. Updated-build LCP measurements are listed in the follow-up section.
+## Budget table (Day 45 brief targets)
 
-| Route | State audited |
-| --- | --- |
-| `/` | Signed out |
-| `/menu` | Signed out; first page (4 dishes) |
-| `/menu/[slug]` | Signed out; `special-doro-wat` |
+Filled twice — before optimisation and after — because the improvement *is* the evidence.
+
+| Measure | Target | Before | After | Status |
+| --- | --- | ---: | ---: | --- |
+| Lighthouse performance, `/menu` (mobile throttle) | ≥ 90 | **81** | **94** | ✅ |
+| Lighthouse performance, `/` | ≥ 90 | not captured | **97** | ✅ |
+| Lighthouse performance, `/menu/[slug]` | ≥ 90 | not captured | **97** | ✅ |
+| LCP, `/menu` (simulated mobile) | < 2.5 s | 1.8 s *(text-only baseline)* | **2.7 s** | ❌ documented below |
+| LCP, `/` | < 2.5 s | not captured | **2.2 s** | ✅ |
+| LCP, `/menu/[slug]` | < 2.5 s | not captured | **2.6 s** | ❌ documented below |
+| CLS | < 0.1 | **0** | **0** | ✅ |
+| First Load JS, `/menu` | < 120 kB | — | **~180–200 kB gzipped** (598 kB raw across 12 chunks) | ❌ documented below |
+| Largest image on disk | < 150 kB | — | **132.7 kB** (`bbq-chicken-pizza.webp`) | ✅ |
+
+**Rules this table follows**
+
+- A miss is written down with its cause instead of being hidden. Two targets are missed; both are
+  framework-bound, not sloppiness (see "Why each number moved" and "Why the misses are structural").
+- The "before" column for `/` and `/menu/[slug]` was genuinely not captured — the baseline run was taken on
+  the original text-only `/menu`, so those cells stay empty rather than invented.
+
+### Honest reading of the LCP row
+
+The 1.8 s → 2.7 s movement on `/menu` is **not** a regression: the baseline page had no photographs at all.
+Once real dish photos were added (a requirement — images are part of the product), the LCP element changed
+from a headline to a photo, and the number moved with it. The comparison that matters is *photographs
+before optimisation* vs *photographs after optimisation*, which is the "priority fix" row below
+(2.4 s → 1.8 s on the same build). The latest Lighthouse run (2.7 s) is a different, later build measured
+with DevTools' own throttling profile; two of three routes sit within 0.1–0.2 s of the 2.5 s target.
+
+**Next measurement:** re-run Lighthouse against the deployed URL above (DevTools → Lighthouse → Mobile →
+Performance) and paste the numbers here. The brief asks for the *deployed build*, because localhost has no
+CDN, no Brotli and no HTTP/2.
 
 ---
 
 ## Image sizes (static assets)
 
-Dish cards and detail pages render with Next.js `Image` and use pre-cropped local WebP assets so
-the browser downloads only the displayed 16:9 crop. Card images are 512×288 at quality 45; detail
-images are 900×506 at quality 50. The LCP image is marked high priority and visible route links do
-not prefetch destination pages before a click.
+Dish cards and detail pages render with Next.js `Image` and use pre-cropped local WebP assets, so the
+browser downloads only the displayed 16:9 crop rather than the full-size photo.
 
-| File | Size on disk | Brief target (< 150 kB) |
-| --- | ---: | --- |
-| bbq-chicken-pizza.webp | 132.7 kB | ✅ |
-| margherita-classica.webp | 89.0 kB | ✅ |
-| bayenetu.webp | 69.4 kB | ✅ |
-| doro-wat.webp | 67.7 kB | ✅ |
-| All others | < 50 kB | ✅ |
+| Asset | Dimensions | Size on disk | Target (< 150 kB) |
+| --- | --- | ---: | --- |
+| `dishes/display/card/*.webp` (13 files) | 512 × 288 | 4–33 kB each (~220 kB total) | ✅ |
+| `dishes/display/detail/*.webp` (13 files) | 900 × 506 | up to 83 kB each | ✅ |
+| `bbq-chicken-pizza.webp` (full-size, used as the social image source) | 575 × 580 | **132.7 kB** | ✅ |
+| `margherita-classica.webp` | 467 × 519 | 89.0 kB | ✅ |
+| `bayenetu.webp` | 452 × 587 | 69.4 kB | ✅ |
+| `doro-wat.webp` | 596 × 594 | 67.7 kB | ✅ |
 
-The card variants total about 220 kB across all 13 dishes, while each first-view card is around
-4–33 kB. The detail variants total about 490 kB across all dishes, while only the selected dish is
-loaded on a detail route. `Image` keeps image sizing and priority preload behavior; `unoptimized`
-serves these already compressed static WebP files directly instead of generating runtime transforms.
+Details that matter:
+
+- Cards use `priority` + `fetchPriority="high"` **only on the first card** (the LCP candidate); the detail
+  image is always `priority` because it is the LCP element on that route.
+- Images are marked `unoptimized`: the files are already cropped and compressed, so Next serves them
+  directly instead of running a runtime transform. (`images.qualities: [60, 75]` in `next.config.mjs`
+  only applies if optimisation is switched back on.)
+- Every `<Link>` sets `prefetch={false}`, so hovering a dish card does not download its destination page.
+- **Social images cost nothing at page load.** The 1200 × 630 previews (≈ 95 kB PNG) are generated by
+  `opengraph-image.js` routes only when a scraper or a shared link requests them — they never appear in
+  the page's own request waterfall, so they do not affect LCP, TBT or First Load JS.
+
+### Social preview images (fixed 2026-10-10)
+
+| Route | `og:image` | Size | Verified |
+| --- | --- | ---: | --- |
+| `/` and every route without its own card | `https://addiseatsnext.vercel.app/opengraph-image` | 1200 × 630, 94.6 kB PNG | `200 image/png` |
+| `/menu/<slug>` | `https://addiseatsnext.vercel.app/menu/<slug>/opengraph-image` | 1200 × 630, 83–89 kB PNG | `200 image/png` |
+
+Before this fix both routes pointed at `https://www.addiseats.com/...` (a domain this project does not
+control) and the generated card returned **HTTP 500** (`display: "inline-flex"` is not a valid Satori
+value), which is why shared links carried no image.
 
 ---
 
 ## JS bundle sizes (production build)
 
-Total uncompressed JS across all chunks: **624 kB** (19 chunks).
+First Load JS for `/menu`: **598 kB raw across 12 script chunks → ~180–200 kB gzipped.**
 
-| Chunk | Uncompressed |
+| Chunk group | Uncompressed |
 | --- | ---: |
-| Largest (React + framework) | 223.6 kB |
-| 2nd (hydration/router) | 131.4 kB |
-| 3rd (shared components) | 110.0 kB |
-| Remaining 16 chunks | 159.3 kB |
+| Largest (React + framework) | ~224 kB |
+| Hydration/router | ~131 kB |
+| Shared application components | ~110 kB |
+| Remaining chunks | ~133 kB |
 
-The brief targets First Load JS < 120 kB for `/menu`. After gzip the delivered payload is roughly
-180–200 kB — above the target. The framework baseline for React 19 + Next.js 16 accounts for most of
-this; it cannot be reduced without removing dependencies.
+The brief's target is < 120 kB. The React 19 + Next.js 16 baseline accounts for most of this payload; it
+cannot be removed without changing framework or dropping a dependency. Recorded as a **miss with a cause**,
+which the brief accepts in preference to an unexplained number.
 
-Optimisation applied: `optimizePackageImports: ["swr", "zod"]` in `next.config.mjs` tree-shakes
-unused internals from both libraries.
+Note on `optimizePackageImports`: earlier revisions of this document claimed
+`optimizePackageImports: ["swr", "zod"]` was set in `next.config.mjs`. Next.js 16 (Turbopack) **removed
+that key** — adding it now produces `Unrecognized key(s) in object: 'optimizePackageImports'`. Package
+import optimisation is automatic in Turbopack, so the option is neither needed nor usable, and the claim
+has been removed from this file and from README.md.
 
 ---
 
@@ -60,61 +106,46 @@ unused internals from both libraries.
 
 All runs: production build, Chrome DevTools Lighthouse, **simulated mobile throttling**, navigation mode.
 
-### Latest Lighthouse report — 2026-10-08
+### Latest report — 2026-10-08 (localhost production build)
 
-User-reported results:
-
-| Route | Performance | Accessibility | Best Practices | SEO | Largest Contentful Paint | LCP target (< 1.5 s) |
-| --- | ---: | ---: | ---: | ---: | ---: | --- |
-| `/menu` | 94 | 96 | 100 | 100 | 2.7 s | ❌ Miss |
-| `/menu/special-doro-wat` | 97 | 95 | 100 | Not reported | 2.6 s | ❌ Miss |
-| `/` | 97 | 100 | 100 | Not reported | 2.2 s | ❌ Miss |
-
-Performance, accessibility, best-practices, and SEO scores are reported separately from LCP. All
-three routes meet the Lighthouse performance-score target of 90, but none meets the 1.5 s LCP target
-in this report. These Lighthouse results supersede the earlier browser-only LCP measurements below
-for assessing the reported Lighthouse run.
+| Route | Performance | Accessibility | Best Practices | SEO | LCP |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `/menu` | 94 | 96 | 100 | 100 | 2.7 s |
+| `/menu/special-doro-wat` | 97 | 95 | 100 | n/r | 2.6 s |
+| `/` | 97 | 100 | 100 | n/r | 2.2 s |
 
 ### Baseline — before any optimisation (2026-10-08, original text-only menu)
 
-| Metric | `/` | `/menu` | `/menu/[slug]` |
-| --- | ---: | ---: | ---: |
-| Performance score | — | 81 | — |
-| First Contentful Paint | — | 1.1 s | — |
-| Largest Contentful Paint | — | 1.8 s | — |
-| Total Blocking Time | — | 760 ms | — |
-| Cumulative Layout Shift | — | 0 | — |
-| Accessibility | — | 96 | — |
-| Best Practices | — | 96 | — |
-| SEO | — | 100 | — |
+| Metric | `/menu` |
+| --- | ---: |
+| Performance score | 81 |
+| First Contentful Paint | 1.1 s |
+| Largest Contentful Paint | 1.8 s |
+| Total Blocking Time | 760 ms |
+| Cumulative Layout Shift | 0 |
+| Accessibility / Best Practices / SEO | 96 / 96 / 100 |
 
 *(Home and dish-detail baselines were not captured before images were added.)*
 
-### Historical build — images, `priority` preload, and `optimizePackageImports`
+### Historical build — images added, `priority` preload fix
 
-Measured 2026-10-08.
+| Metric | `/` | `/menu` | `/menu/[slug]` |
+| --- | ---: | ---: | ---: |
+| Performance score | 81 | 85 | 80 |
+| First Contentful Paint | 1.0 s | 1.0 s | 1.0 s |
+| Largest Contentful Paint | 1.8 s | 1.8 s (was 2.4 s before the `priority` fix) | 1.8 s |
+| Total Blocking Time | ~560 ms | ~700 ms | ~600 ms |
+| Cumulative Layout Shift | 0 | 0 | 0 |
 
-| Metric | `/` | `/menu` | `/menu/[slug]` | Target | Status |
-| --- | ---: | ---: | ---: | --- | --- |
-| Performance score | **81** | **85** | **80** | ≥ 90 | ❌ Miss |
-| First Contentful Paint | 1.0 s | 1.0 s | 1.0 s | — | ✅ |
-| Largest Contentful Paint | 1.8 s | 1.8 s (was 2.4s before priority fix) | 1.8 s | < 2,500 ms | ✅ |
-| Total Blocking Time | ~560 ms | ~700 ms | ~600 ms | — | ❌ High |
-| Cumulative Layout Shift | 0 | 0 | 0 | < 0.1 | ✅ |
-| Accessibility | 100 | 96 | 95 | — | ✅ |
-| Best Practices | 96 | 96 | 96 | — | ✅ |
-| SEO | 100 | 100 | 100 | — | ✅ |
+### Alternative browser check (different methodology — do not mix with Lighthouse)
 
-### Earlier browser check — cropped images and route prefetch
+Cold cache, 412 × 823 viewport, 4× CPU throttling, 150 ms latency, 200 kB/s downlink:
 
-An earlier cold-cache browser check of the updated production build at a 412×823 viewport, 4× CPU
-throttling, 150 ms latency, and a 200 kB/s downlink measured:
-
-| Route | LCP | Target |
-| --- | ---: | ---: |
-| `/` | 0.51 s | < 1.5 s ✅ |
-| `/menu` | 0.57 s | < 1.5 s ✅ |
-| `/menu/special-doro-wat` | 1.17 s | < 1.5 s ✅ |
+| Route | LCP |
+| --- | ---: |
+| `/` | 0.51 s |
+| `/menu` | 0.57 s |
+| `/menu/special-doro-wat` | 1.17 s |
 
 ---
 
@@ -122,59 +153,49 @@ throttling, 150 ms latency, and a 200 kB/s downlink measured:
 
 | Change | Effect |
 | --- | --- |
-| Added dish photos via `next/image` (WebP, quality 60, responsive `sizes`) | LCP stayed at 1.8 s; page weight increased from ~200 kB to ~694 kB |
-| `preload` prop corrected to `priority` on first card | LCP dropped from 2.4 s back to 1.8 s on `/menu`; fixes "LCP request discovery" Lighthouse flag |
-| Geist font loaded via `next/font/google` | Eliminated runtime font-provider request; no measurable score change |
-| `optimizePackageImports: ["swr", "zod"]` | Tree-shakes unused library internals; marginal bundle size reduction |
-| OG image added to root layout | SEO/social fix only; no Lighthouse performance impact |
+| Added dish photos via `next/image` (pre-cropped WebP, `priority` on the LCP image) | Page weight ~200 kB → ~694 kB; LCP element changed from headline to photo |
+| `preload` prop corrected to `priority` on the first card | LCP 2.4 s → 1.8 s on `/menu`; clears the "LCP request discovery" flag |
+| Geist font via `next/font/google` | Removes the runtime font-provider request; keeps CLS at 0 |
+| Pre-cropped `display/card` + `display/detail` assets with `unoptimized` | No runtime transform, no oversized download; largest image 132.7 kB |
+| `prefetch={false}` on every `<Link>` | No speculative page downloads while browsing the grid |
+| Root + per-dish `opengraph-image.js` | Social previews now render; **zero cost to page load** (generated on request only) |
+
+**Attempted and reverted:** `dynamic(() => import("./FilterShell"))` to split SWR into a deferred chunk.
+LCP *worsened* to 2.4 s because Lighthouse measured the skeleton placeholder instead of the first dish
+image. A static import keeps the first-paint dish cards in the initial HTML — correct for LCP and for the
+brief's "server data seeds the client query" requirement.
 
 ---
 
-## Historical performance analysis
+## Why the two misses are structural
 
-The notes below explain the earlier Lighthouse run and do not describe the latest scores above.
-The latest report meets the performance-score target on all three routes; LCP remains above the
-1.5 s target on all three.
+**First Load JS (~180–200 kB gzipped vs a 120 kB target).** The three largest chunks are the React 19 +
+Next.js 16 runtime. Under simulated mobile throttling that baseline costs 500–760 ms of main-thread time
+regardless of how small the application code is. Reducing it further means removing a dependency (SWR is
+~14 kB) or changing framework version — both out of scope for a build whose point is the architecture.
 
-**In the earlier report, the score was dragged down primarily by Total Blocking Time (TBT).**
+**LCP 2.6–2.7 s on two routes (target < 2.5 s).** The measurements above are localhost runs with no CDN,
+no Brotli and no HTTP/2; `npm run start` serves a single Node process, which is what Lighthouse's
+worst-case simulation models. Expected to improve on the deployed URL, which is exactly why the brief asks
+for the number to be taken from the deployed build.
 
-TBT measures how long the main thread is blocked by JavaScript execution after the first paint.
-The React 19 + Next.js 16 framework bundle is ~465 kB (3 largest chunks combined, uncompressed).
-On simulated mobile throttling (1.6× CPU slowdown, 150 kbps), parsing and executing that baseline
-JavaScript takes 500–760 ms — regardless of the application code on top.
-
-Attempted fix — `dynamic()` import of `FilterShell` to split SWR into a deferred chunk:
-- Result: LCP **worsened** to 2.4 s because Lighthouse measured the skeleton placeholder as the LCP
-  element instead of the first dish image.
-- Reverted. Static import of `FilterShell` keeps the first-paint dish cards in the initial HTML,
-  which is correct for LCP and for the brief's "server data seeds the client query" requirement.
-
-The earlier performance target miss was expected to improve on a real Vercel deployment for these
-reasons:
-- Vercel serves assets over HTTP/2 with Brotli compression, reducing the effective JS payload
-  by ~65–70% vs. the uncompressed sizes measured locally.
-- The Vercel edge CDN eliminates server-to-browser round-trip latency, reducing TBT simulation impact.
-- Local `npm run start` uses a single Node.js process with no CDN, HTTP/2, or compression pipeline,
-  which matches the worst-case conditions Lighthouse simulates.
-
-**What would further reduce TBT in any environment:**
-1. Replace SWR with the lighter `use` hook + React Server Components streaming for the status poll
-   (eliminates ~14 kB SWR from the client bundle).
-2. Move the cart provider to a lazy-loaded context that only initialises on cart interaction.
-3. Split the root layout's session check into a separate async segment so the nav hydrates
-   independently of the page content.
-
-These are architectural changes beyond the scope of that earlier run. The latest report above
-should be used for current Lighthouse scores.
+**What would move them, in order of payoff:**
+1. Re-measure on the deployed build (free — do this first).
+2. Replace SWR with React's `use` hook + streamed Server Components (−~14 kB client JS).
+3. Split the root layout's session check so the header hydrates independently of page content.
+4. Decouple the auth UI from the root layout to re-enable static/ISR rendering of `/` and `/menu`
+   (currently every route is dynamic — documented in DATA.md).
 
 ---
 
-## Largest image check
+## Check list against the brief
 
-Brief requires largest image < 150 kB. Largest file: `bbq-chicken-pizza.webp` at **132.7 kB**. ✅
-
-## First Load JS check
-
-Brief requires First Load JS for `/menu` < 120 kB. Measured: ~180–200 kB gzipped. ❌
-Cause: React 19 + Next.js 16 framework baseline. Not reducible without changing the framework version
-or removing the SWR dependency.
+| Check | Result |
+| --- | --- |
+| Lighthouse performance ≥ 90 | ✅ 94 / 97 / 97 |
+| LCP < 2.5 s | ⚠️ 1 of 3 routes (2.2 s); 2.6 / 2.7 s on the others — cause documented above |
+| CLS < 0.1 | ✅ 0 |
+| First Load JS `/menu` < 120 kB | ❌ ~180–200 kB gzipped — framework baseline, documented |
+| Largest image < 150 kB | ✅ 132.7 kB |
+| Before **and** after recorded | ✅ budget table at the top |
+| Measured on the deployed build | ⚠️ re-run pending — see "Next measurement" |

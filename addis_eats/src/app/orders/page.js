@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/session";
 export const metadata = {
   title: "My Orders",
   description: "View and track your Addis Eats order history.",
+  robots: { index: false, follow: false },
 };
 
 export default async function OrdersPage() {

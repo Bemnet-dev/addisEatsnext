@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
+import CancelOrderButton from "./CancelOrderButton";
 
 const STATUS_STYLES = {
     pending: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
@@ -12,7 +13,7 @@ const STATUS_STYLES = {
 };
 
 export default function OrderStatusClient({ order }) {
-    const { data, isLoading } = useSWR(`/api/orders/${order.id}`, fetcher, {
+    const { data, isLoading, mutate } = useSWR(`/api/orders/${order.id}`, fetcher, {
         fallbackData: order,
         revalidateOnFocus: false,
         refreshInterval: (latestOrder) =>
@@ -68,6 +69,12 @@ export default function OrderStatusClient({ order }) {
                         ))}
                     </ul>
                 </div>
+
+                {!["delivered", "cancelled"].includes(currentOrder.status) ? (
+                    <div className="mt-6">
+                        <CancelOrderButton orderId={order.id} onDone={() => mutate()} />
+                    </div>
+                ) : null}
 
                 {isLoading && !data ? (
                     <div className="mt-6 flex items-center gap-2 text-sm text-neutral-400">

@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Home",
+  title: "Addis Eats — Authentic Ethiopian restaurant, menu & delivery",
   description: "Explore Addis Eats for fresh Ethiopian dishes, coffee, and street-food favorites.",
 };
 

@@ -1,7 +1,6 @@
 import { getDishes } from "@/lib/dishes";
+import { absoluteUrl } from "@/lib/site";
 import { toSlug } from "./menu/slug";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.addiseats.com";
 
 export default async function sitemap() {
   const dishes = await getDishes();
@@ -10,14 +9,14 @@ export default async function sitemap() {
     "",
     "/menu",
   ].map((path) => ({
-    url: new URL(path, SITE_URL).toString(),
+    url: absoluteUrl(path),
     lastModified: new Date(),
     changeFrequency: "weekly",
     priority: path === "" ? 1 : 0.8,
   }));
 
   const dishRoutes = dishes.map((dish) => ({
-    url: new URL(`/menu/${toSlug(dish.name)}`, SITE_URL).toString(),
+    url: absoluteUrl(`/menu/${toSlug(dish.name)}`),
     lastModified: new Date(),
     changeFrequency: "weekly",
     priority: 0.7,

@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { getOrders } from "@/lib/orders";
 import { requireSession } from "@/lib/session";
+import OrderStatusControls from "./OrderStatusControls";
 
 export const metadata = {
   title: "Kitchen",
   description: "Staff kitchen view — manage and fulfil incoming orders.",
+  robots: { index: false, follow: false },
 };
 
 export default async function KitchenPage() {
@@ -50,6 +52,7 @@ export default async function KitchenPage() {
                   </li>
                 ))}
               </ul>
+              <OrderStatusControls orderId={order.id} status={order.status} />
             </li>
           ))}
         </ul>

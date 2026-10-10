@@ -8,6 +8,7 @@ import CartItems from "./CartItems";
 export const metadata = {
   title: "Cart",
   description: "Review your order before checkout.",
+  robots: { index: false, follow: false },
 };
 
 export default function CartPage() {

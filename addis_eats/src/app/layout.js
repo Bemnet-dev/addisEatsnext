@@ -2,7 +2,9 @@ import Link from "next/link";
 import { Geist } from "next/font/google";
 import { signOut } from "@/app/actions";
 import { getSession } from "@/lib/session";
+import { absoluteUrl, SITE_URL } from "@/lib/site";
 import Providers from "../lib/providers";
+import ActionConsole from "./ActionConsole";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -11,7 +13,7 @@ const geistSans = Geist({
 });
 
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.addiseats.com"),
+  metadataBase: new URL(SITE_URL),
   applicationName: "Addis Eats",
   title: {
     default: "Addis Eats",
@@ -33,17 +35,19 @@ export const metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/dishes/doro-wat.webp",
+        url: absoluteUrl("/opengraph-image"),
         width: 1200,
         height: 630,
-        alt: "Doro Wat — Addis Eats signature dish",
+        alt: "Addis Eats — authentic Ethiopian cuisine",
       },
     ],
+    url: absoluteUrl("/"),
   },
   twitter: {
     card: "summary_large_image",
     title: "Addis Eats",
     description: "Authentic Ethiopian cuisine, handcrafted dishes, and a modern dining experience.",
+    images: [absoluteUrl("/opengraph-image")],
   },
 };
 
@@ -53,6 +57,7 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${geistSans.variable} min-h-screen flex flex-col bg-neutral-950 text-neutral-100`}>
+        <ActionConsole />
         <Providers>
           <header className="flex justify-between items-center px-8 py-4 border-b border-neutral-800">
             <Link

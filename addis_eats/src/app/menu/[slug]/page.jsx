@@ -2,10 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getDishDetailImage, getDishes } from "@/lib/dishes";
+import { absoluteUrl } from "@/lib/site";
 import { toSlug } from "../slug";
 import AddToCartButton from "../AddToCartButton";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.addiseats.com";
 
 export async function generateStaticParams() {
   const dishes = await getDishes();
@@ -22,7 +21,10 @@ export async function generateMetadata({ params }, parent) {
   }
 
   const description = `${dish.name} — ${dish.description}`;
-  const imageUrl = new URL(dish.image, SITE_URL).toString();
+  // The generated 1200x630 card (name, price, category) — the same image the
+  // /menu/[slug]/opengraph-image route serves — so the shared link always
+  // carries a correctly sized preview with the price on it.
+  const imageUrl = absoluteUrl(`/menu/${slug}/opengraph-image`);
 
   return {
     title: dish.name,
@@ -32,7 +34,7 @@ export async function generateMetadata({ params }, parent) {
     },
     openGraph: {
       type: "article",
-      url: `/menu/${slug}`,
+      url: absoluteUrl(`/menu/${slug}`),
       title: `${dish.name} | Addis Eats`,
       description,
       images: [
@@ -68,7 +70,7 @@ export default async function DishPage({ params }) {
     "@type": "MenuItem",
     name: dish.name,
     description: dish.description,
-    image: new URL(dish.image, SITE_URL).toString(),
+    image: absoluteUrl(dish.image),
     category: dish.category,
     offers: {
       "@type": "Offer",

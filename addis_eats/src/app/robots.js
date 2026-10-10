@@ -1,4 +1,4 @@
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.addiseats.com";
+import { absoluteUrl } from "@/lib/site";
 
 export default function robots() {
   return {
@@ -7,6 +7,6 @@ export default function robots() {
       allow: ["/", "/menu"],
       disallow: ["/api", "/signin", "/orders", "/checkout", "/cart", "/kitchen"],
     },
-    sitemap: new URL("/sitemap.xml", SITE_URL).toString(),
+    sitemap: absoluteUrl("/sitemap.xml"),
   };
 }
