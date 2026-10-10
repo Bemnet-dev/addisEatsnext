@@ -8,7 +8,7 @@ export const size = {
 
 export const contentType = "image/png";
 
-export const alt = "Addis Eats — authentic Ethiopian food";
+export const alt = "Addis Eats — authentic Ethiopian cuisine";
 
 /**
  * Root social preview card (1200x630) used by every route that does not
