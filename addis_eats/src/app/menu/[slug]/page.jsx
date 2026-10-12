@@ -10,6 +10,19 @@ import AddToCartButton from "../AddToCartButton";
 const OG_IMAGE_WIDTH = 900;
 const OG_IMAGE_HEIGHT = 506;
 
+/**
+ * Build a /_next/image URL that serves the dish photo as JPEG/PNG.
+ * Social crawlers (Facebook, WhatsApp, Telegram) do not support WebP as og:image.
+ * The Next.js Image Optimization endpoint transcodes to a widely-supported format
+ * and the crawler gets a real photo rather than a broken image or fallback card.
+ *
+ * w=900 matches the source dimensions; q=85 keeps file size reasonable.
+ */
+function getOgImageUrl(publicPath) {
+  const encoded = encodeURIComponent(publicPath);
+  return absoluteUrl(`/_next/image?url=${encoded}&w=900&q=85`);
+}
+
 export async function generateStaticParams() {
   const dishes = await getDishes();
   return dishes.map((dish) => ({ slug: toSlug(dish.name) }));
@@ -25,10 +38,11 @@ export async function generateMetadata({ params }, parent) {
   }
 
   const description = `${dish.name} — ${dish.description}`;
-  // Use the real dish photo served from /public/dishes/display/detail/.
-  // Pointing directly at the static file means social crawlers get the actual
-  // food photo instead of a generated text card.
-  const imageUrl = absoluteUrl(getDishDetailImage(dish.image));
+  // Use the real dish photo via Next.js image optimization (/_next/image).
+  // Crawlers (Facebook, WhatsApp, Telegram) do not support WebP as og:image,
+  // but /_next/image transcodes the WebP to JPEG on demand so they get a real
+  // food photo instead of a generated text card or a broken preview.
+  const imageUrl = getOgImageUrl(getDishDetailImage(dish.image));
 
   return {
     title: dish.name,
