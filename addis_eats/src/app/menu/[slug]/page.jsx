@@ -11,16 +11,21 @@ const OG_IMAGE_WIDTH = 900;
 const OG_IMAGE_HEIGHT = 506;
 
 /**
- * Build a /_next/image URL that serves the dish photo as JPEG/PNG.
- * Social crawlers (Facebook, WhatsApp, Telegram) do not support WebP as og:image.
- * The Next.js Image Optimization endpoint transcodes to a widely-supported format
- * and the crawler gets a real photo rather than a broken image or fallback card.
+ * Return the absolute URL for the dish's OG image.
  *
- * w=900 matches the source dimensions; q=85 keeps file size reasonable.
+ * We use the pre-generated JPEG files in /public/og/dishes/ rather than
+ * /_next/image because:
+ *   - /_next/image respects the browser's Accept header and serves WebP to
+ *     most clients — but social crawlers (Facebook, WhatsApp, Telegram, iMessage)
+ *     don't reliably support WebP and may show a broken or missing preview.
+ *   - Static JPEGs in /public are served as-is with a Content-Type of image/jpeg,
+ *     which every crawler understands with no negotiation.
+ *
+ * File naming: /public/og/dishes/<slug>.jpg  (e.g. special-doro-wat.jpg)
+ * These are committed to git and deployed alongside the app.
  */
-function getOgImageUrl(publicPath) {
-  const encoded = encodeURIComponent(publicPath);
-  return absoluteUrl(`/_next/image?url=${encoded}&w=900&q=85`);
+function getOgImageUrl(slug) {
+  return absoluteUrl(`/og/dishes/${slug}.jpg`);
 }
 
 export async function generateStaticParams() {
@@ -38,11 +43,9 @@ export async function generateMetadata({ params }, parent) {
   }
 
   const description = `${dish.name} — ${dish.description}`;
-  // Use the real dish photo via Next.js image optimization (/_next/image).
-  // Crawlers (Facebook, WhatsApp, Telegram) do not support WebP as og:image,
-  // but /_next/image transcodes the WebP to JPEG on demand so they get a real
-  // food photo instead of a generated text card or a broken preview.
-  const imageUrl = getOgImageUrl(getDishDetailImage(dish.image));
+  // Static JPEG in /public/og/dishes/<slug>.jpg — served as plain image/jpeg,
+  // which every social crawler (Facebook, WhatsApp, Telegram) can display.
+  const imageUrl = getOgImageUrl(slug);
 
   return {
     title: dish.name,
