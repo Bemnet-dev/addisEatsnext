@@ -6,6 +6,10 @@ import { absoluteUrl } from "@/lib/site";
 import { toSlug } from "../slug";
 import AddToCartButton from "../AddToCartButton";
 
+// Dimensions of the pre-cropped detail WebP files in /public/dishes/display/detail/
+const OG_IMAGE_WIDTH = 900;
+const OG_IMAGE_HEIGHT = 506;
+
 export async function generateStaticParams() {
   const dishes = await getDishes();
   return dishes.map((dish) => ({ slug: toSlug(dish.name) }));
@@ -21,10 +25,10 @@ export async function generateMetadata({ params }, parent) {
   }
 
   const description = `${dish.name} — ${dish.description}`;
-  // The generated 1200x630 card (name, price, category) — the same image the
-  // /menu/[slug]/opengraph-image route serves — so the shared link always
-  // carries a correctly sized preview with the price on it.
-  const imageUrl = absoluteUrl(`/menu/${slug}/opengraph-image`);
+  // Use the real dish photo served from /public/dishes/display/detail/.
+  // Pointing directly at the static file means social crawlers get the actual
+  // food photo instead of a generated text card.
+  const imageUrl = absoluteUrl(getDishDetailImage(dish.image));
 
   return {
     title: dish.name,
@@ -40,8 +44,8 @@ export async function generateMetadata({ params }, parent) {
       images: [
         {
           url: imageUrl,
-          width: 1200,
-          height: 630,
+          width: OG_IMAGE_WIDTH,
+          height: OG_IMAGE_HEIGHT,
           alt: `${dish.name} from Addis Eats`,
         },
       ],
