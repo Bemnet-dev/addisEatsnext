@@ -10,12 +10,15 @@ This document describes the current component execution boundaries. Paths are re
 
 ## Explicit Client Component entry points
 
-There are 15 files marked with `"use client"`:
+There are 18 files marked with `"use client"`:
 
 | File | Why it is client-side |
 | --- | --- |
 | `src/lib/providers.jsx` | Owns the cart context and state used across routes. |
 | `src/app/ActionConsole.jsx` | Toggleable developer console; owns open/closed UI state. |
+| `src/app/SiteHeader.jsx` | Owns the mobile menu open/closed state and reads cart count for the badge. The session is passed down as a prop from the server layout. |
+| `src/app/MenuButton.jsx` | Handles the hamburger toggle click. |
+| `src/app/NavLinks.jsx` | Uses `usePathname` for active-link state and closes the mobile panel on navigate. |
 | `src/app/cart/CartItems.jsx` | Reads cart context (`useCart`) and handles item removal. The page shell (`cart/page.js`) is a server component. |
 | `src/app/checkout/CheckoutForm.jsx` | Uses `useActionState`, cart context, form submission, and pending state. |
 | `src/app/checkout/success/ClearCartOnMount.jsx` | Uses an effect to clear cart state after confirmation renders. |
@@ -68,8 +71,13 @@ The hero reuses `DishCard` from `src/app/menu/DishCard.jsx`, so a landing-page c
 - The server dish-detail page renders `AddToCartButton` as a client leaf. The surrounding dish details remain server-rendered.
 - The server checkout page renders `CheckoutForm`, which submits to the `placeOrder` Server Action.
 - The root layout renders `Providers`, the client cart-state provider, around the application.
+- The root layout (server) reads the session and passes it as a prop into `SiteHeader`, a client component that owns the mobile menu state and the cart-count badge. Auth stays a server concern; only the presentation of it is client-side.
+
+## Responsive shell
+
+The layout shell (header, main, footer) is responsive: `main` uses `px-4 sm:px-6 lg:px-8`, and the header swaps its desktop nav for a hamburger panel below the `md` breakpoint. Because the header is a client component, this breakpoint behaviour lives under the `SiteHeader`/`MenuButton`/`NavLinks` boundary.
 - `src/lib/schema.js` is used by the server action and API route for request validation; the form displays the returned field errors.
 
 ## Boundary check
 
-The 15 explicit `"use client"` directives match the table above. Do not count `DishList.jsx` as server-only: it is imported by `FilterShell.jsx`. The most direct way to confirm boundary changes is to search for `"use client"`, inspect imports from those entry points, then compare with the production build output.
+The 18 explicit `"use client"` directives match the table above. Do not count `DishList.jsx` as server-only: it is imported by `FilterShell.jsx`. The most direct way to confirm boundary changes is to search for `"use client"`, inspect imports from those entry points, then compare with the production build output.

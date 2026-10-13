@@ -118,16 +118,16 @@ export default function FilterShell({ dishes: initialDishes }) {
         }}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-neutral-800 pb-4 text-sm text-neutral-400">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 pb-4 text-sm text-neutral-400 sm:gap-4">
         <p aria-live="polite">
           {visibleDishes.length} {visibleDishes.length === 1 ? "dish" : "dishes"}
         </p>
         <label className="flex items-center gap-3">
-          <span>Sort by</span>
+          <span className="whitespace-nowrap">Sort by</span>
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
-            className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition-colors focus:border-amber-300"
+            className="max-w-[55%] rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition-colors focus:border-amber-300 sm:max-w-none"
           >
             <option value="default">Default</option>
             <option value="price-asc">Price: Low to High</option>

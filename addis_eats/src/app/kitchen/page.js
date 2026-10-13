@@ -22,7 +22,7 @@ export default async function KitchenPage() {
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
           Staff workspace
         </p>
-        <h1 className="font-serif text-4xl text-amber-300">Kitchen orders</h1>
+        <h1 className="font-serif text-3xl text-amber-300 sm:text-4xl">Kitchen orders</h1>
       </div>
 
       {orders.length === 0 ? (

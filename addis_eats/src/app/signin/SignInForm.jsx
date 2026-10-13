@@ -11,7 +11,7 @@ export default function SignInForm({ nextPath = "/orders" }) {
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-amber-400">
                 Sign in
             </p>
-            <h1 className="font-serif text-4xl text-amber-300">Welcome back</h1>
+            <h1 className="font-serif text-3xl text-amber-300 sm:text-4xl">Welcome back</h1>
             <p className="mt-3 text-sm text-neutral-400">
                 Sign in with a customer or staff demo account.
             </p>

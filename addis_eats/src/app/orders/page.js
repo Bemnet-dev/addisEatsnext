@@ -23,7 +23,7 @@ export default async function OrdersPage() {
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-400">
                     Order tracker
                 </p>
-                <h1 className="font-serif text-4xl text-amber-300">Recent orders</h1>
+                <h1 className="font-serif text-3xl text-amber-300 sm:text-4xl">Recent orders</h1>
             </div>
 
             {orders.length === 0 ? (
@@ -33,16 +33,16 @@ export default async function OrdersPage() {
             ) : (
                 <ul className="space-y-3">
                     {orders.map((order) => (
-                        <li key={order.id} className="flex items-center justify-between gap-4 rounded-md border border-neutral-800 bg-neutral-900/70 p-4">
-                            <div>
+                        <li key={order.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-neutral-800 bg-neutral-900/70 p-4">
+                            <div className="min-w-0 flex-1">
                                 <p className="text-xs uppercase tracking-[0.18em] text-emerald-400">{order.status}</p>
-                                <p className="mt-2 font-semibold text-neutral-100">{order.customerName}</p>
-                                <p className="text-sm text-neutral-400">{order.id}</p>
+                                <p className="mt-2 truncate font-semibold text-neutral-100">{order.customerName}</p>
+                                <p className="truncate text-sm text-neutral-400">{order.id}</p>
                             </div>
 
                             <Link
                                 href={`/orders/${order.id}`}
-                                className="rounded-md border border-amber-400/80 px-4 py-2 text-sm font-medium text-amber-300 transition-colors hover:bg-amber-400 hover:text-neutral-950"
+                                className="shrink-0 rounded-md border border-amber-400/80 px-4 py-2 text-sm font-medium text-amber-300 transition-colors hover:bg-amber-400 hover:text-neutral-950"
                             >
                                 View status
                             </Link>

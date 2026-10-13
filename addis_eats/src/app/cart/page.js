@@ -13,7 +13,7 @@ export default function CartPage() {
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-400">
           Your order
         </p>
-        <h1 className="font-serif text-4xl text-amber-300">Cart</h1>
+        <h1 className="font-serif text-3xl text-amber-300 sm:text-4xl">Cart</h1>
       </div>
 
       <CartItems />

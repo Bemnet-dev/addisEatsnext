@@ -21,12 +21,12 @@ export default function DishCard({ dish, priority = false }) {
           fetchPriority={priority ? "high" : undefined}
           className="aspect-[16/9] w-full bg-neutral-800 object-cover"
         />
-        <span className="flex flex-1 flex-col p-5">
-          <span className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-400">
+        <span className="flex flex-1 flex-col p-4 sm:p-5">
+          <span className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-400 sm:mb-4">
             {dish.category}
           </span>
           <span className="flex items-start justify-between gap-3">
-            <strong className="font-serif text-lg font-medium text-neutral-100 transition-colors group-hover:text-amber-300">
+            <strong className="font-serif text-base font-medium text-neutral-100 transition-colors group-hover:text-amber-300 sm:text-lg">
               {dish.name}
             </strong>
             <span className="shrink-0 text-sm font-semibold text-amber-300">

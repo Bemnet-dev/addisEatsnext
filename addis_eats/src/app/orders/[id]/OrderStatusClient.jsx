@@ -26,14 +26,18 @@ export default function OrderStatusClient({ order }) {
 
     return (
         <div className="space-y-6">
-            <div className="border-b border-neutral-800 pb-5">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
-                    Live status
-                </p>
-                <h1 className="font-serif text-4xl text-amber-300">Order {currentOrder.id}</h1>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 pb-5">
+                <div className="min-w-0">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                        Live status
+                    </p>
+                    <h1 className="font-serif text-3xl text-amber-300 break-words sm:text-4xl">
+                        Order {currentOrder.id}
+                    </h1>
+                </div>
             </div>
 
-            <div className="rounded-xl border border-neutral-800 bg-neutral-900/80 p-6">
+            <div className="rounded-xl border border-neutral-800 bg-neutral-900/80 p-4 sm:p-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <p className="text-sm text-neutral-400">Customer</p>

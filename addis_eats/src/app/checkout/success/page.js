@@ -31,7 +31,7 @@ export default async function CheckoutSuccessPage({ searchParams }) {
     <div className="max-w-2xl text-center py-12">
       <ClearCartOnMount />
 
-      <h1 className="font-serif text-4xl text-amber-400 mb-4">
+      <h1 className="font-serif text-3xl text-amber-400 mb-4 sm:text-4xl">
         Thank You
       </h1>
       <p className="text-neutral-400 mb-2">

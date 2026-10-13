@@ -126,10 +126,10 @@ export default async function DishPage({ params }) {
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
           {dish.category}
         </p>
-        <h1 className="font-serif text-4xl text-amber-300 mb-3">
+        <h1 className="font-serif text-3xl text-amber-300 mb-3 sm:text-4xl">
           {dish.name}
         </h1>
-        <p className="mb-6 text-2xl font-semibold text-amber-300">{dish.price} Birr</p>
+        <p className="mb-6 text-xl font-semibold text-amber-300 sm:text-2xl">{dish.price} Birr</p>
         <p className="mb-8 max-w-xl text-base leading-7 text-neutral-300">
           {dish.description}
         </p>

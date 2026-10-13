@@ -17,7 +17,7 @@ export default async function MenuPage() {
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
           Addis, served fresh
         </p>
-        <h1 className="font-serif text-4xl text-amber-300">Our Menu</h1>
+        <h1 className="font-serif text-3xl text-amber-300 sm:text-4xl">Our Menu</h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-neutral-400">
           Ethiopian favorites, made for sharing. Choose a course to explore.
         </p>
