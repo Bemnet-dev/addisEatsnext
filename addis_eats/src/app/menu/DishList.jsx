@@ -8,7 +8,7 @@ export default function DishList({ dishes }) {
   return (
     <ul className="grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
       {dishes.map((dish, index) => (
-        <DishCard key={dish.id} dish={dish} priority={index === 0} />
+        <DishCard key={dish.id} dish={dish} priority={index === 0} preload={index === 0} />
       ))}
     </ul>
   );

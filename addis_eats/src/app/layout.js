@@ -9,6 +9,10 @@ import "./globals.css";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  // `swap` paints the fallback font immediately and swaps in Geist once it
+  // loads, so text (the LCP element on text-only pages like /cart and /signin)
+  // renders without waiting on the font — no invisible-text delay.
+  display: "swap",
 });
 
 export const metadata = {

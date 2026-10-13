@@ -197,16 +197,20 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Priority image — the LCP element on this page, so it uses the
-              pre-cropped 900×506 detail WebP (~46 kB) rather than the full photo. */}
+          {/* Priority image — the LCP element on this page. Served through the
+              optimizer so the browser fetches a variant matched to the rendered
+              width: full width on mobile, roughly half the container on desktop
+              (`lg:grid-cols-[1.05fr_0.95fr]` inside `max-w-6xl`). The source is
+              the pre-cropped 900×506 detail WebP; `sizes` keeps the chosen
+              variant at or below it. */}
           <div className="overflow-hidden rounded-xl border border-neutral-800">
             <Image
               src={getDishDetailImage(heroDish.image)}
               alt={`Photo of ${heroDish.name}`}
               width={900}
               height={506}
-              unoptimized
-              priority
+              sizes="(max-width: 1024px) 100vw, 46vw"
+              preload
               fetchPriority="high"
               className="aspect-[16/9] w-full bg-neutral-800 object-cover"
             />
@@ -256,12 +260,15 @@ export default async function HomePage() {
                   prefetch={false}
                   className="group flex h-full items-center gap-4 rounded-md border border-neutral-800 bg-neutral-900/70 p-4 transition-colors hover:border-emerald-500/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
                 >
+                  {/* Fixed 112px thumbnail (`w-28`), so the optimizer only ever
+                      needs a small variant — this drops the download from the
+                      full 512px source to a ~112px (or 224px @2x) rendition. */}
                   <Image
                     src={section.signature.image}
                     alt={`Photo of ${section.signature.name}`}
                     width={512}
                     height={288}
-                    unoptimized
+                    sizes="112px"
                     className="aspect-[16/9] w-28 shrink-0 rounded-md bg-neutral-800 object-cover"
                   />
                   <span className="min-w-0">

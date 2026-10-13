@@ -109,15 +109,20 @@ export default async function DishPage({ params }) {
       />
 
       <div className="max-w-3xl">
-        {/* Dish image — priority because it's the LCP element on this page */}
+        {/* Dish image — the LCP element on this page. Served through the
+            optimizer (`sizes` + no `unoptimized`) so the browser downloads only
+            the variant matching the rendered width rather than the full 900px
+            asset; `fetchPriority="high"` lifts it ahead of lazy-loaded images.
+            The single-column layout caps this at `max-w-3xl` (~768px), so the
+            srcset can never pick larger than 1024w. */}
         <div className="mb-8 overflow-hidden rounded-xl border border-neutral-800">
           <Image
             src={getDishDetailImage(dish.image)}
             alt={`Photo of ${dish.name}`}
             width={900}
             height={506}
-            unoptimized
-            priority
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 768px, 768px"
+            preload
             fetchPriority="high"
             className="aspect-[16/9] w-full object-cover bg-neutral-800"
           />
