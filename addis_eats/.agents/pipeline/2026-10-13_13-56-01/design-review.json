@@ -1,0 +1,96 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "HIGH",
+      "title": "Hero text colour produces black-on-dark-green — unreadable",
+      "location": "Design §Feature 3 Hero section — text-neutral-100 on bg-neutral-200",
+      "summary": "neutral-100=#17211b (near-black) on bg-neutral-200=#2e3a32 (dark green) gives ~1.5:1 contrast. Use text-neutral-950 (#ffffff) for headline and badge text."
+    },
+    {
+      "id": 2,
+      "severity": "HIGH",
+      "title": "CTA hover state uses amber-300 which is identical to amber-400 — no visible change",
+      "location": "Design §Feature 3 Hero section and Closing CTA banner — hover:bg-amber-300",
+      "summary": "amber-300 and amber-400 both map to #15803d in globals.css. The hover produces no visual feedback. Use hover:bg-amber-500 (#166534) or redefine amber-300 in the theme."
+    },
+    {
+      "id": 3,
+      "severity": "HIGH",
+      "title": "getDishes() is async — design treats it as synchronous, landing page will crash without await",
+      "location": "Design §Feature 3 Architecture decision and §Error Handling Feature 3",
+      "summary": "getDishes() in src/lib/dishes.js is declared async. The landing page must be an async Server Component and must await getDishes(). The design omits both async and await."
+    },
+    {
+      "id": 4,
+      "severity": "MEDIUM",
+      "title": "og:title format ambiguous between <title> template and openGraph.title explicit field",
+      "location": "Design §Feature 1 Finding; Requirements FR-1.2",
+      "summary": "Design does not distinguish title (uses layout template, dish name only) from openGraph.title (explicitly set with suffix). Risk of implementer double-appending the suffix. Add explicit note: do not modify the title field."
+    },
+    {
+      "id": 5,
+      "severity": "MEDIUM",
+      "title": "Contradictory hero bleed instructions — negative-margin approach mentioned then discarded in same paragraph",
+      "location": "Design §Feature 3 Architecture decision",
+      "summary": "Design describes negative-margin bleed then says 'Design choice: contained hero'. Remove all mention of the bleed approach; state the decision once clearly."
+    },
+    {
+      "id": 6,
+      "severity": "MEDIUM",
+      "title": "MobileNav props omit signOut Server Action — no guidance on how client component calls it",
+      "location": "Design §2a MobileNav.jsx — Props: { session: { name, role } | null }",
+      "summary": "The sign-out form needs the signOut Server Action. Design must explicitly state whether MobileNav imports it directly or receives it as a prop."
+    },
+    {
+      "id": 7,
+      "severity": "MEDIUM",
+      "title": "getDishCardImage import missing from page.js code sketch for FeaturedDishCard",
+      "location": "Design §Feature 3 Curated featured dishes and FeaturedDishCard description",
+      "summary": "The design never shows import { getDishes, getDishCardImage } from '@/lib/dishes' in page.js. Add it explicitly."
+    },
+    {
+      "id": 8,
+      "severity": "MEDIUM",
+      "title": "scrollbar-none must use @utility in Tailwind v4, not a plain CSS class rule",
+      "location": "Design §2b CategoryBar.jsx and globals.css snippet",
+      "summary": "Replace .scrollbar-none { ... } with @utility scrollbar-none { scrollbar-width: none; &::-webkit-scrollbar { display: none; } } to be a proper Tailwind v4 utility."
+    },
+    {
+      "id": 9,
+      "severity": "MEDIUM",
+      "title": "FilterShell sort/count row not addressed — will overflow at 320 px",
+      "location": "Design §2b Fix in FilterShell.jsx",
+      "summary": "The outer flex flex-wrap items-center justify-between row containing the count and sort label is not made flex-col on mobile. Add flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between."
+    },
+    {
+      "id": 10,
+      "severity": "NIT",
+      "title": "Checkout link tap-target already met — design overstates the problem",
+      "location": "Design §2d CartItems.jsx fix — Proceed to Checkout link",
+      "summary": "Existing py-3 on the link already satisfies the 44 px tap target. The block w-full change is a UX enhancement, not a required fix. Label it as optional."
+    },
+    {
+      "id": 11,
+      "severity": "NIT",
+      "title": "Design states Next.js version without consulting in-repo docs as required by AGENTS.md",
+      "location": "Design §Overview",
+      "summary": "AGENTS.md requires reading node_modules/next/dist/docs/ before writing code. The design makes no mention of this. Add a note instructing the implementer to check in-repo docs first."
+    },
+    {
+      "id": 12,
+      "severity": "NIT",
+      "title": "FeaturedDishCard inlined in page.js — note intent to prevent future confusion",
+      "location": "Design §Feature 3 FeaturedDishCard description",
+      "summary": "Inline sub-components in Server Component files are fine, but should have a comment noting extraction is needed if client interactivity is added."
+    },
+    {
+      "id": 13,
+      "severity": "NIT",
+      "title": "animate-[fadeInDown_...] arbitrary syntax token order — should be documented",
+      "location": "Design §Feature 3 Keyframe animations usage in Hero section JSX",
+      "summary": "The 5-token animation shorthand order (name duration delay easing fill-mode) is non-obvious in Tailwind v4 arbitrary syntax. Add a code comment explaining token order."
+    }
+  ]
+}
