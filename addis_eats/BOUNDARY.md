@@ -10,17 +10,23 @@ This document describes the current component execution boundaries. Paths are re
 
 ## Explicit Client Component entry points
 
-There are 9 files marked with `"use client"`:
+There are 15 files marked with `"use client"`:
 
 | File | Why it is client-side |
 | --- | --- |
 | `src/lib/providers.jsx` | Owns the cart context and state used across routes. |
+| `src/app/ActionConsole.jsx` | Toggleable developer console; owns open/closed UI state. |
 | `src/app/cart/CartItems.jsx` | Reads cart context (`useCart`) and handles item removal. The page shell (`cart/page.js`) is a server component. |
 | `src/app/checkout/CheckoutForm.jsx` | Uses `useActionState`, cart context, form submission, and pending state. |
 | `src/app/checkout/success/ClearCartOnMount.jsx` | Uses an effect to clear cart state after confirmation renders. |
+| `src/app/home/OpenStatus.jsx` | Reads the visitor's clock to show a live open/closed pill on the landing page. |
+| `src/app/kitchen/OrderStatusControls.jsx` | Sends staff status changes through the `updateOrderStatus` action. |
 | `src/app/menu/CategoryBar.jsx` | Handles category selection clicks. |
 | `src/app/menu/FilterShell.jsx` | Owns category and sorting state. |
 | `src/app/menu/AddToCartButton.jsx` | Adds the current dish to cart and displays feedback. |
+| `src/app/orders/[id]/OrderStatusClient.jsx` | Polls `GET /api/orders/[id]` with SWR for live status. |
+| `src/app/orders/[id]/CancelOrderButton.jsx` | Confirms and submits an order cancellation. |
+| `src/app/signin/SignInForm.jsx` | Handles form input and submits the sign-in action. |
 | `src/app/error.js` | Root error boundary; uses the `reset` callback and is required to be client-side by Next.js. |
 | `src/app/menu/error.js` | Menu-segment error boundary; uses `reset` and is required to be client-side. |
 
@@ -31,7 +37,7 @@ These route components do not declare `"use client"`:
 | File | Why it stays server-side |
 | --- | --- |
 | `src/app/layout.js` | Owns the document `<html>` and `<body>`, shared shell, and provider placement. |
-| `src/app/page.js` | Renders the static home page. |
+| `src/app/page.js` | Renders the dynamic landing page: awaits `getDishes()`, derives course sections, signature picks and the Addis-time greeting, and renders `OpenStatus` as a client leaf. |
 | `src/app/menu/layout.js` | Wraps menu routes in a shared width container. |
 | `src/app/menu/page.js` | Awaits `getDishes()` and passes the serializable data to `FilterShell`. |
 | `src/app/menu/[slug]/page.jsx` | Awaits route params/data, resolves the dish, and calls `notFound()` when absent. |
@@ -49,6 +55,14 @@ These route components do not declare `"use client"`:
 
 The server menu page fetches the dishes and passes them as a serializable `dishes` prop. This keeps data loading on the server, while filtering, sorting, and list rendering happen under the client boundary.
 
+## Home boundary detail
+
+`src/app/page.js` is a Server Component: it awaits `getDishes()` and derives every section from the catalogue — course groups and counts, "from" prices, the signature pick per course, and the greeting/suggested dish from the current hour in `Africa/Addis_Ababa`. Nothing about the menu is hardcoded in the landing page.
+
+`src/app/home/OpenStatus.jsx` is the only client leaf. It is gated on `useEffect` (the server renders a neutral "Kitchen hours" placeholder, the client fills in the real status after mount) so the open/closed answer — which depends on the visitor's current time — never causes a hydration mismatch. It re-checks every minute for long-lived tabs.
+
+The hero reuses `DishCard` from `src/app/menu/DishCard.jsx`, so a landing-page card and a menu card cannot drift apart.
+
 ## Other composition patterns
 
 - The server dish-detail page renders `AddToCartButton` as a client leaf. The surrounding dish details remain server-rendered.
@@ -58,4 +72,4 @@ The server menu page fetches the dishes and passes them as a serializable `dishe
 
 ## Boundary check
 
-The 9 explicit `"use client"` directives match the table above. Do not count `DishList.jsx` as server-only: it is imported by `FilterShell.jsx`. The most direct way to confirm boundary changes is to search for `"use client"`, inspect imports from those entry points, then compare with the production build output.
+The 15 explicit `"use client"` directives match the table above. Do not count `DishList.jsx` as server-only: it is imported by `FilterShell.jsx`. The most direct way to confirm boundary changes is to search for `"use client"`, inspect imports from those entry points, then compare with the production build output.

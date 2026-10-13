@@ -1,10 +1,33 @@
 # Technical Design — OG Images, Mobile Responsiveness & Interactive Landing Page
+## Revision 2 — addresses all review findings
+
+> **Before writing any code**, consult `node_modules/next/dist/docs/` for any API differences in this version of Next.js (v16.3.5), as required by AGENTS.md. This is a non-standard version with potentially breaking changes from public documentation.
+
+---
 
 ## Overview
 
-This is a Next.js 16.3.5 app using React 19, Tailwind CSS v4 (via `@tailwindcss/postcss`), and the App Router. The colour palette is overridden in `globals.css` via `@theme inline` — `neutral-950` is white and `neutral-100` is near-black, which is the inverse of Tailwind's standard scale. All class names in this design respect that override. The tech stack is locked: Next.js App Router, Tailwind v4 utility classes, no new npm packages.
+This is a Next.js 16.3.5 (non-standard version — check in-repo docs) app using React 19, Tailwind CSS v4 (via `@tailwindcss/postcss`), and the App Router. The colour palette is overridden in `globals.css` via `@theme inline`. **Critical:** the `neutral` and `amber` scales do not match Tailwind defaults:
 
-Three features are implemented across: (1) per-dish OG metadata — already coded and correct, needing only build verification; (2) mobile responsiveness — targeted Tailwind fixes across layout, nav, and key pages; (3) a new interactive landing page — a Server Component page with a hero section and featured-dishes grid.
+```
+neutral-950 = #ffffff   (white)
+neutral-900 = #f5f8f6   (near-white)
+neutral-800 = #e2e8e4
+neutral-700 = #c6d0ca
+neutral-500 = #637169
+neutral-400 = #526159   (dark muted green)
+neutral-300 = #3f4d45
+neutral-200 = #2e3a32   (dark forest green)
+neutral-100 = #17211b   (near-black)
+amber-300   = #15803d   (dark green — SAME as amber-400)
+amber-400   = #15803d   (dark green — same as amber-300)
+amber-500   = #166534   (darker green)
+emerald-400 = #0284c7   (blue)
+```
+
+Any colour chosen for foreground text must be checked against the actual hex values above, not assumed from Tailwind's standard colour names. All Tailwind class names used in this design are verified against these overrides.
+
+The tech stack is locked: Next.js App Router, Tailwind v4 utility classes, no new npm packages.
 
 ---
 
@@ -12,11 +35,19 @@ Three features are implemented across: (1) per-dish OG metadata — already code
 
 ### Finding
 
-After reading `src/app/menu/[slug]/page.jsx`, `src/app/menu/slug.js`, and comparing all 13 dish names against the 13 files in `public/og/dishes/`, the feature is **already fully implemented**. `generateMetadata` exports the correct `openGraph.images` array pointing to `absoluteUrl(/og/dishes/${slug}.jpg)`, with `twitter.card = "summary_large_image"`. The `toSlug()` function produces byte-identical names to the OG JPEG basenames for all 13 dishes (e.g. `garden-veggie-and-avocado-burger`, `honey-tej-fermented-honey-wine`).
+`generateMetadata` is **already fully implemented** in `src/app/menu/[slug]/page.jsx`. It exports correct `openGraph.images` pointing to `absoluteUrl(/og/dishes/${slug}.jpg)` with `twitter.card = "summary_large_image"`. The `toSlug()` function in `src/app/menu/slug.js` produces values byte-identical to the OG JPEG basenames for all 13 dishes.
+
+### Key clarification on title vs og:title
+
+The existing `generateMetadata` sets two separate fields:
+- `title: dish.name` — the HTML `<title>` tag; the layout's template (`"%s | Addis Eats"`) auto-appends the suffix, producing `"Special Doro Wat | Addis Eats"`.
+- `openGraph.title: \`${dish.name} | Addis Eats\`` — the OG meta tag; includes the full suffix explicitly.
+
+**Do not modify the `title` field.** The layout template handles the suffix. Only `openGraph.title` carries the full suffix. Changing `title` to include the suffix would cause double-appending: `"Special Doro Wat | Addis Eats | Addis Eats"`.
 
 ### Implementation action
 
-No code changes are needed. The implementer must run `npm run build` and confirm no build error touches `src/app/menu/[slug]/page.jsx`. Two spot-checks in the build output (`special-doro-wat` and `traditional-buna-ethiopian-coffee`) will confirm OG tags render.
+No code changes are needed. The implementer must run `npm run build` and confirm no build error touches `src/app/menu/[slug]/page.jsx`. Verify OG output for at least `special-doro-wat` and `traditional-buna-ethiopian-coffee`.
 
 ---
 
@@ -24,161 +55,183 @@ No code changes are needed. The implementer must run `npm run build` and confirm
 
 ### Tailwind v4 context
 
-`globals.css` redefines the `neutral` and `amber` scales via `@theme inline`. This design uses the same class names already in the codebase — the custom overrides are transparent to Tailwind class usage. No `theme()` function calls or `extend` blocks are needed.
+`globals.css` redefines colour scales via `@theme inline`. This design uses only class names that already appear in the codebase, with one addition: `min-h-[44px]` for tap targets. No `theme()` function calls or new `extend` blocks are needed.
 
 ### 2a — Root layout header (`src/app/layout.js`)
 
-**Problem:** The header `<nav>` is a flat `flex` row with `gap-6`. On a 320–640 px viewport this overflows horizontally.
+**Problem:** The header `<nav>` is a flat `flex` row with `gap-6`. On 320–640 px viewports this overflows horizontally.
 
-**Solution:** Add a mobile hamburger toggle extracted as a `"use client"` component `src/app/MobileNav.jsx`. The layout server component renders `<MobileNav>` in place of the inline `<nav>`. This keeps the layout itself a Server Component.
+**Solution:** Extract a `"use client"` island `src/app/MobileNav.jsx`. The layout server component renders `<MobileNav>` in place of the inline `<nav>`.
 
-`MobileNav.jsx` structure:
-- State: `const [open, setOpen] = useState(false)`.
-- Renders a `<button>` (hamburger icon, min 44 × 44 px tap target) visible only on `sm:hidden`.
-- Renders the nav links in a `<nav>` that is `hidden` on mobile when `!open`, `block` when `open`, absolutely positioned below the header, full-width, with a dark background (`bg-neutral-950 border-b border-neutral-800`).
-- On `sm` and wider, the nav links display as the current flat row (`sm:flex sm:items-center sm:gap-6`), and the hamburger is hidden (`sm:hidden`).
-- Each nav link must be `block py-3 px-6 text-base` (≥44 px tap height) in the mobile stack.
-- The sign-out `<form>` button and Sign-in link are included in the mobile menu with the same `block py-3 px-6` sizing.
+#### MobileNav architecture
 
-`MobileNav` receives all session-dependent data as props from the layout server component so no extra server calls are made from the client component.
+`MobileNav` is a client component. It can import the `signOut` Server Action **directly** from `@/app/actions` — the in-repo Next.js docs (`use-server.md`) confirm that client components can import and call Server Actions from dedicated `"use server"` files. Passing it as a prop is unnecessary and complicates the props interface. Final props:
 
-Props: `{ session: { name, role } | null }`.
+```
+Props: { session: { name: string; role: string } | null }
+```
 
-The header outer `<div>` changes from `px-8 py-4` to `px-4 py-3 sm:px-8 sm:py-4` to reclaim horizontal space on small screens. The `<main>` padding changes from `p-8` to `p-4 sm:p-8`.
+`signOut` is imported directly inside `MobileNav.jsx` from `@/app/actions`.
 
-### 2b — Menu page filter shell (`src/app/menu/FilterShell.jsx`)
+#### MobileNav structure
 
-**Problem:** The `CategoryBar` wraps into multiple rows when there are many categories on narrow viewports, which is acceptable, but the sort select label can overflow.
+```jsx
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+import { signOut } from "@/app/actions";
 
-**Finding:** `FilterShell` already uses `flex-col` on small screens and `sm:flex-row` for the search/sort bar — this is correct. The search input uses `w-full`, which is correct. The sort `<select>` is inside a `<label>` that does not constrain its width; on very narrow screens the select may push the label off-screen.
-
-**Fix in `FilterShell.jsx`:** Wrap the sort label in `<label className="flex items-center gap-2 min-w-0">` and add `min-w-0` to the `<select>` element. Also add `overflow-x-hidden` to the outer `<div className="space-y-6">` wrapper to prevent any child overflow leaking.
-
-**`CategoryBar.jsx`:** Change `flex flex-wrap gap-2` to `flex gap-2 overflow-x-auto pb-1 scrollbar-none` — this makes the category pills scroll horizontally as a single row instead of wrapping. Each pill keeps its existing `px-4 py-2` (≥44 px height achievable with `py-3` — bump to `py-2.5` to hit ~40 px; exact 44 px is achieved by adding `min-h-[44px]` to each button). Add `shrink-0` to each `<button>` to prevent pills from compressing.
-
-To hide the scrollbar on WebKit without a plugin, add to `globals.css`:
-```css
-.scrollbar-none {
-  scrollbar-width: none;
-}
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
+export default function MobileNav({ session }) {
+  const [open, setOpen] = useState(false);
+  // ...hamburger toggle button (sm:hidden, min 44×44 px tap target)
+  // ...full-width dropdown nav (visible when open, hidden when !open, sm:hidden)
+  // ...desktop nav (hidden on mobile, sm:flex)
 }
 ```
 
-### 2c — Dish detail page (`src/app/menu/[slug]/page.jsx`)
+Mobile dropdown: `absolute top-full left-0 right-0 z-50 bg-neutral-950 border-b border-neutral-800`. Each nav link gets `block py-3 px-6 text-base` (≥44 px tap height). The hamburger button gets `p-2.5` giving a 44 × 44 px touch area (2.5 × 4 × 4 = 40 px padding; at base font-size the SVG icon is 24 px; total interactive area is 44 px with padding).
 
-**Finding:** The page is already constrained to `max-w-3xl`. The image uses `w-full` and `aspect-[16/9]`. The text elements use relative units. No changes needed structurally.
+Desktop: links display as `hidden sm:flex items-center gap-6 text-sm` (matching current behaviour).
 
-**Fix:** The `<h1>` uses `text-4xl` with no responsive fallback — on 320 px this may be tight. Change to `text-3xl sm:text-4xl`. The `<p>` price line (`text-2xl`) is fine. `AddToCartButton` has `px-6 py-3` which is ≥44 px height. No further changes.
+The sign-out `<form action={signOut}>` renders inside both the mobile dropdown (with `block py-3 px-6` button) and the desktop view (existing `px-3 py-1.5` button), matching current layout.
 
-### 2d — Cart page (`src/app/cart/CartItems.jsx`)
+**Layout changes in `src/app/layout.js`:**
+- Header outer `<div>`: `px-8 py-4` → `px-4 py-3 sm:px-8 sm:py-4`
+- `<main>`: `p-8` → `p-4 sm:p-6 lg:p-8`
+- Replace the inline `<nav>` and sign-in link with `<MobileNav session={session} />`
 
-**Finding:** Cart items use `flex justify-between` with the price and Remove button on the right. On narrow screens the dish name and the price+button cluster may overflow if the name is long.
+### 2b — Menu page filter shell (`src/app/menu/FilterShell.jsx`)
 
-**Fix:** Change the `<li>` inner layout to allow wrapping: `flex flex-wrap justify-between items-center gap-y-1`. Change the name `<div>` to `min-w-0` with `truncate` only as a fallback — actually keep full name visible by allowing the row to wrap at `sm` instead. Specifically:
-- Outer `<li>`: `flex flex-col gap-1 py-3 border-b border-neutral-800 sm:flex-row sm:items-center sm:justify-between`
-- Name `<div>`: `flex-1 min-w-0`
-- Price+button `<div>`: `flex items-center gap-3 self-start sm:self-auto`
-- Remove `<button>`: add `min-h-[44px] px-2` to hit tap target minimum.
-- "Proceed to Checkout" `<Link>`: change to `block w-full text-center py-3 ...` on mobile, keeping `inline-block` on sm+ via `sm:inline-block sm:w-auto`.
+**Fix 1 — Sort/count row overflow:** The outer `<div className="flex flex-wrap items-center justify-between gap-4 border-b ...">` squeezes its two children at 320 px. Change to:
+```jsx
+<div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4 border-b border-neutral-800 pb-4 text-sm text-neutral-400">
+```
+This stacks count and sort vertically on mobile, horizontally from sm up.
 
-### 2e — Checkout form (`src/app/checkout/CheckoutForm.jsx`)
+**Fix 2 — Sort select min-width:** Inside the sort `<label>`, add `min-w-0` to the `<select>` to prevent it from expanding beyond the label's flex bounds on narrow screens.
 
-**Finding:** All inputs already use `w-full`. The `<button type="submit">` already uses `w-full py-3`, giving ≥44 px. The `max-w-2xl` wrapper is fine.
+**Fix 3 — Search input iOS zoom:** Change the search `<input>` from `text-sm` to `text-base sm:text-sm`. iOS Safari auto-zooms inputs with font-size < 16 px (14 px = `text-sm`) — `text-base` (16 px) prevents this.
 
-**Fix:** Add `text-base` (16 px) to all `<input>` elements to prevent iOS Safari from auto-zooming on focus (iOS zooms in when an input has font-size < 16 px). Current inputs use `text-sm` (14 px). Change to `text-base sm:text-sm` on each input field in `CheckoutForm.jsx`.
+### 2c — Category bar (`src/app/menu/CategoryBar.jsx`)
 
-Also add `text-base sm:text-sm` to the `FilterShell` search input for the same iOS zoom reason.
+**Problem:** Pills wrap into multiple rows on narrow viewports, which can push content below the fold. On very narrow screens (320 px) with many categories this wastes vertical space.
 
-### 2f — `<main>` layout constraint
+**Fix:** Change `flex flex-wrap gap-2` to `flex gap-2 overflow-x-auto pb-1 scrollbar-none`. Add `shrink-0` and `min-h-[44px]` to each `<button>`.
 
-The root layout `<main>` has `p-8 max-w-6xl`. Change `p-8` to `p-4 sm:p-6 lg:p-8` so the landing page and menu page have breathing room on mobile without the 32 px side padding eating into the content area on 320 px viewports.
+The `scrollbar-none` utility must be registered with Tailwind v4's `@utility` syntax (not a plain CSS class), otherwise the JIT engine may not recognize it. Add to `globals.css`:
+
+```css
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+```
+
+Complete button class after fix: `shrink-0 min-h-[44px] rounded-md border px-4 py-2 text-sm font-medium transition-colors ...`
+
+### 2d — Dish detail page (`src/app/menu/[slug]/page.jsx`)
+
+**Fix:** `<h1>` uses `text-4xl` with no responsive fallback. On 320 px this clips. Change to `text-3xl sm:text-4xl`. No other changes needed — `max-w-3xl`, `w-full`, `aspect-[16/9]`, and relative font sizes are already correct. `AddToCartButton` has `px-6 py-3` giving ≥44 px height.
+
+### 2e — Cart page (`src/app/cart/CartItems.jsx`)
+
+**Problem:** Cart `<li>` items use `flex justify-between` — on narrow screens a long dish name and the price+Remove cluster may overflow or clip.
+
+**Fix:** Change `<li>` layout to stack on mobile:
+```jsx
+<li className="flex flex-col gap-1 py-3 border-b border-neutral-800 sm:flex-row sm:items-center sm:justify-between">
+```
+Name `<div>`: add `min-w-0` to allow text to wrap. Price+button `<div>`: `flex items-center gap-3 self-start sm:self-auto`. Remove `<button>`: add `min-h-[44px] px-2` to reach 44 px tap target.
+
+"Proceed to Checkout" `<Link>`: the existing `inline-block px-6 py-3` already meets the 44 px tap target requirement (py-3 = 12 px × 2 + text ≈ 44 px). The following is an **optional UX enhancement** only, not a required fix: `block w-full text-center py-3 sm:inline-block sm:w-auto`.
+
+### 2f — Checkout form (`src/app/checkout/CheckoutForm.jsx`)
+
+**Fix:** All `<input>` elements use `text-sm` (14 px). iOS Safari auto-zooms inputs below 16 px. Change to `text-base sm:text-sm` on all three `<input>` fields (phone, address) and the `<p>` showing the customer name can stay as-is (it's non-interactive). No other changes needed: `w-full` and `w-full py-3` on the submit button are already correct.
+
+### File change summary for Feature 2
+
+| File | Change |
+|------|--------|
+| `src/app/layout.js` | Reduce padding on header and main; render `<MobileNav>` |
+| `src/app/MobileNav.jsx` | **New** — `"use client"` hamburger/nav island |
+| `src/app/globals.css` | Add `@utility scrollbar-none`, `@keyframes` (Feature 3) |
+| `src/app/menu/CategoryBar.jsx` | Horizontal scroll, `shrink-0`, `min-h-[44px]` on pills |
+| `src/app/menu/FilterShell.jsx` | Sort/count row `flex-col` on mobile; `min-w-0` on select; `text-base` on search input |
+| `src/app/menu/[slug]/page.jsx` | `text-3xl sm:text-4xl` on `<h1>` |
+| `src/app/cart/CartItems.jsx` | Wrap `<li>` on mobile; `min-h-[44px]` on Remove; optional full-width checkout link |
+| `src/app/checkout/CheckoutForm.jsx` | `text-base sm:text-sm` on inputs |
 
 ---
 
 ## Feature 3 — Interactive Landing Page
 
+### Colour verification for the landing page
+
+Before specifying any class, verified against `globals.css`:
+
+| Need | Class | Hex |
+|------|-------|-----|
+| Page background | `bg-neutral-950` | `#ffffff` (white) |
+| Hero section bg | `bg-neutral-900` | `#f5f8f6` (near-white) |
+| Headline text (must be dark on near-white bg) | `text-neutral-100` | `#17211b` (near-black ✓ high contrast) |
+| Sub-headline text | `text-neutral-300` | `#3f4d45` (dark muted ✓) |
+| Badge text on light bg | `text-amber-500` | `#166534` (dark green on near-white ✓) |
+| CTA button bg | `bg-amber-400` | `#15803d` (dark green) |
+| CTA button text | `text-neutral-950` | `#ffffff` (white on dark green ✓) |
+| CTA hover (must differ from `amber-400`) | `hover:bg-amber-500` | `#166534` (slightly darker green ✓) |
+| Category badge on card | `text-emerald-400` | `#0284c7` (blue — matches menu page) |
+| Card border on hover | `hover:border-emerald-500` | `#38bdf8` (lighter blue — matches `DishCard.jsx`) |
+
+`amber-300 = amber-400 = #15803d` — **never use `hover:bg-amber-300`** for hover states; it produces no visible change. All CTA hover states use `hover:bg-amber-500`.
+
 ### Architecture decision
 
-The current `page.js` is a minimal placeholder. The new page is a **Server Component** that calls `getDishes()` (already imported in the menu page — no new data fetch pattern). No `"use client"` is needed at the page level. Hover animations are CSS-only via Tailwind's `group-hover:` utilities, which work without JS.
+The new `page.js` is an `async` Server Component — `getDishes()` is `async function getDishes()` in `src/lib/dishes.js` and must be awaited. No top-level `"use client"`. All hover effects are implemented via Tailwind `group-hover:` utilities (CSS-only, no JS). No client island is needed.
 
-A single client island `src/app/HeroButton.jsx` is extracted **only if** a JS-driven interaction is required (e.g. a scroll-to-section or animated CTA). On reflection, the CTA is a plain `<Link href="/menu">` — no JS needed. Therefore no client island is required for the initial implementation; if the designer later wants an animated counter or parallax, that can be added without a Page-level architecture change.
+The hero is **contained** within the root layout's `max-w-6xl` wrapper — no negative-margin bleed, no `overflow: hidden` changes to the layout. The hero uses a gradient background that fills its bounded section. This is simpler and avoids cross-breakpoint overflow risks.
+
+### Imports in `page.js`
+
+```js
+import Link from "next/link";
+import Image from "next/image";
+import { getDishes, getDishCardImage } from "@/lib/dishes";
+import { toSlug } from "./menu/slug";
+```
+
+`getDishCardImage` transforms `/dishes/<name>.webp` → `/dishes/display/card/<name>.webp`. All four featured card images are confirmed present in `public/dishes/display/card/`.
 
 ### Curated featured dishes
 
-The landing page renders exactly 4 featured dishes, selected statically by ID. The 4 chosen dishes represent different categories and have the strongest visual appeal:
+Selected by filtering `await getDishes()` on IDs `["d1", "d8", "d9", "d11"]`:
 
-| ID  | Name                          | Category  | Image (card) |
-|-----|-------------------------------|-----------|--------------|
-| d1  | Special Doro Wat              | Ethiopian | `doro-wat.webp` |
-| d8  | Addis Gourmet Double Smash    | Burgers   | `addis-double-smash.webp` |
-| d9  | Crispy Zesty Chicken Burger   | Burgers   | `crispy-chicken-burger.webp` |
-| d11 | Traditional Buna (Ethiopian Coffee) | Drinks | `ethiopian-coffee.webp` |
+| ID  | Name | Category |
+|-----|------|----------|
+| d1  | Special Doro Wat | Ethiopian |
+| d8  | Addis Gourmet Double Smash | Burgers |
+| d9  | Crispy Zesty Chicken Burger | Burgers |
+| d11 | Traditional Buna (Ethiopian Coffee) | Drinks |
 
-These are selected at build time by filtering `getDishes()` on the IDs array `["d1","d8","d9","d11"]`. This avoids hardcoding the full dish object and respects any future name or price change in `dishes.js`.
-
-The `getDishCardImage()` helper from `src/lib/dishes.js` provides the card image path (e.g. `/dishes/display/card/doro-wat.webp`).
-
-### Page structure (`src/app/page.js`)
-
-```
-<main> (full-width, no max-width constraint from layout — override with own container)
-  <HeroSection>      <!-- full-viewport-height hero -->
-  <FeaturedSection>  <!-- 4-dish grid -->
-  <CtaBanner>        <!-- closing CTA strip -->
-</main>
+```js
+export default async function HomePage() {
+  const allDishes = await getDishes();
+  const featuredIds = ["d1", "d8", "d9", "d11"];
+  const featuredDishes = allDishes.filter((d) => featuredIds.includes(d.id));
+  // ...
+}
 ```
 
-Because the root layout's `<main>` applies `max-w-6xl p-4 sm:p-6 lg:p-8`, the landing page content sits inside that wrapper. The hero is designed to work within the constrained max-width — a full-bleed background is achieved by a negative-margin escape: `mx-[-1rem] sm:mx-[-1.5rem] lg:mx-[-2rem] px-4 sm:px-6 lg:px-8` on the hero `<section>` with `overflow-hidden` on the layout's `<main>`. Alternatively, the hero can use a contained layout with a gradient background that fills its bounds (no bleed), which is simpler and avoids any overflow risk. **Design choice: use contained hero with gradient background** — this is safer across all breakpoints and requires no layout changes.
+### Keyframe animations (`globals.css`)
 
-### Hero section
-
-```jsx
-<section className="relative flex min-h-[70vh] flex-col items-center justify-center
-                    rounded-2xl overflow-hidden bg-neutral-200 py-16 px-6 text-center
-                    sm:py-24">
-  {/* gradient overlay */}
-  <div className="absolute inset-0 bg-gradient-to-br from-neutral-200 via-neutral-200/95 to-amber-400/10 pointer-events-none" />
-
-  {/* badge */}
-  <p className="relative z-10 mb-4 inline-flex items-center gap-2 rounded-full
-                bg-amber-400/15 px-4 py-1.5 text-xs font-semibold uppercase
-                tracking-[0.2em] text-amber-400 animate-[fadeInDown_0.6s_ease_both]">
-    Addis, served fresh
-  </p>
-
-  {/* headline */}
-  <h1 className="relative z-10 font-serif text-5xl font-bold text-neutral-100
-                 leading-tight max-w-xl sm:text-6xl lg:text-7xl
-                 animate-[fadeInDown_0.7s_0.1s_ease_both]">
-    Taste of Addis
-  </h1>
-
-  {/* subheadline */}
-  <p className="relative z-10 mt-6 max-w-lg text-lg text-neutral-400 leading-relaxed
-                animate-[fadeInDown_0.7s_0.2s_ease_both]">
-    Authentic Ethiopian flavours — doro wat, kitfo, fresh juices, and ceremonial coffee.
-    Order online, delivered fast.
-  </p>
-
-  {/* CTA */}
-  <Link href="/menu"
-    className="relative z-10 mt-10 inline-flex items-center gap-2 rounded-full
-               bg-amber-400 px-8 py-4 text-base font-semibold text-neutral-950
-               transition-transform duration-200 hover:scale-105 hover:bg-amber-300
-               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400
-               animate-[fadeInUp_0.6s_0.3s_ease_both]">
-    Explore the Menu →
-  </Link>
-</section>
-```
-
-### Keyframe animations
-
-Three keyframe animations are added to `globals.css` using native CSS `@keyframes`. This requires no new library — Tailwind v4 supports `animate-[name_duration_delay_easing_fill]` arbitrary values.
+Three `@keyframes` are added at the root CSS level (outside `@theme`). Tailwind v4 supports arbitrary animation syntax `animate-[name_duration_delay_easing_fill-mode]`. The 5-token order matches the CSS `animation` shorthand: **name · duration · delay · timing-function · fill-mode**.
 
 ```css
+/* Landing page entrance animations — used via Tailwind arbitrary animation syntax:
+   animate-[fadeInDown_0.6s_0s_ease_both]
+   Token order: name · duration · delay · timing-function · fill-mode */
 @keyframes fadeInDown {
   from { opacity: 0; transform: translateY(-16px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -195,6 +248,53 @@ Three keyframe animations are added to `globals.css` using native CSS `@keyframe
 }
 ```
 
+### Hero section
+
+Background: `bg-neutral-900` (`#f5f8f6`, near-white light grey) — gives readable dark text on light background. A subtle radial gradient overlay (`from-amber-400/5`) adds warmth without changing the dominant colour.
+
+```jsx
+<section className="relative flex min-h-[70vh] flex-col items-center justify-center
+                    rounded-2xl overflow-hidden bg-neutral-900 py-16 px-6 text-center
+                    sm:py-24">
+  {/* decorative gradient — pointer-events-none so it doesn't block clicks */}
+  <div className="absolute inset-0 bg-gradient-to-br from-amber-400/5 via-transparent
+                  to-emerald-500/5 pointer-events-none" aria-hidden="true" />
+
+  {/* category badge */}
+  <p className="relative z-10 mb-4 inline-flex items-center gap-2 rounded-full
+                bg-amber-400/15 px-4 py-1.5 text-xs font-semibold uppercase
+                tracking-[0.2em] text-amber-500
+                animate-[fadeInDown_0.6s_0s_ease_both]">
+    Addis, served fresh
+  </p>
+
+  {/* headline — text-neutral-100 = #17211b (near-black) on #f5f8f6 (near-white) ✓ */}
+  <h1 className="relative z-10 font-serif text-5xl font-bold text-neutral-100
+                 leading-tight max-w-xl sm:text-6xl lg:text-7xl
+                 animate-[fadeInDown_0.7s_0.1s_ease_both]">
+    Taste of Addis
+  </h1>
+
+  {/* subheadline — text-neutral-300 = #3f4d45 (readable on #f5f8f6) ✓ */}
+  <p className="relative z-10 mt-6 max-w-lg text-lg text-neutral-300 leading-relaxed
+                animate-[fadeInDown_0.7s_0.2s_ease_both]">
+    Authentic Ethiopian flavours — doro wat, kitfo, fresh juices, and ceremonial coffee.
+    Order online, delivered fast.
+  </p>
+
+  {/* CTA — bg-amber-400 (#15803d dark green) + text-neutral-950 (white) ✓
+            hover:bg-amber-500 (#166634) — visibly darker, not identical ✓ */}
+  <Link href="/menu"
+    className="relative z-10 mt-10 inline-flex items-center gap-2 rounded-full
+               bg-amber-400 px-8 py-4 text-base font-semibold text-neutral-950
+               transition-all duration-200 hover:bg-amber-500 hover:scale-105
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400
+               animate-[fadeInUp_0.6s_0.3s_ease_both]">
+    Explore the Menu →
+  </Link>
+</section>
+```
+
 ### Featured dishes section
 
 ```jsx
@@ -208,37 +308,87 @@ Three keyframe animations are added to `globals.css` using native CSS `@keyframe
     </h2>
   </div>
 
+  {/* single-column on mobile, 2-col on sm, 4-col on lg — mobile-first */}
   <ul className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-4">
-    {featuredDishes.map((dish) => (
-      <FeaturedDishCard key={dish.id} dish={dish} />
+    {featuredDishes.map((dish, index) => (
+      <FeaturedDishCard key={dish.id} dish={dish} priority={index === 0} />
     ))}
   </ul>
 
   <div className="mt-10 text-center">
     <Link href="/menu"
       className="inline-flex items-center gap-1 text-sm font-semibold text-amber-400
-                 hover:text-amber-300 transition-colors">
+                 hover:text-amber-500 transition-colors">
       View full menu →
     </Link>
   </div>
 </section>
 ```
 
-`FeaturedDishCard` is a sub-component inside `page.js` (not a separate file, since it is only used here). It mirrors the structure of `DishCard.jsx` but adds a subtle `group-hover:scale-[1.02] transition-transform duration-300` on the card image container to create a zoom-on-hover effect without JS.
+### FeaturedDishCard
+
+Defined as a named function inside `page.js` (not a separate file), since it is only used here and requires no client interactivity. **Note: if client-side interactivity is ever added to this card (click handlers, hover JS), extract it into a separate `"use client"` file at that point.**
+
+```jsx
+// Inline sub-component — Server Component, no "use client".
+// Extract to a separate file if client interactivity is needed in the future.
+function FeaturedDishCard({ dish, priority = false }) {
+  return (
+    <li className="group min-w-0">
+      <Link
+        href={`/menu/${toSlug(dish.name)}`}
+        prefetch={false}
+        className="flex h-full flex-col overflow-hidden rounded-xl border border-neutral-800
+                   bg-neutral-900/70 transition-colors hover:border-emerald-500/70"
+      >
+        {/* image container — group-hover:scale-[1.03] for zoom effect (CSS transform, no JS) */}
+        <div className="overflow-hidden">
+          <Image
+            src={getDishCardImage(dish.image)}
+            alt={`Photo of ${dish.name}`}
+            width={512}
+            height={288}
+            unoptimized
+            priority={priority}
+            fetchPriority={priority ? "high" : undefined}
+            className="aspect-[16/9] w-full object-cover bg-neutral-800
+                       transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+        </div>
+        <span className="flex flex-1 flex-col p-4">
+          <span className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-400">
+            {dish.category}
+          </span>
+          <span className="flex items-start justify-between gap-3">
+            <strong className="font-serif text-base font-medium text-neutral-100
+                               transition-colors group-hover:text-amber-400">
+              {dish.name}
+            </strong>
+            <span className="shrink-0 text-sm font-semibold text-amber-400">
+              {dish.price} Br
+            </span>
+          </span>
+        </span>
+      </Link>
+    </li>
+  );
+}
+```
 
 ### Closing CTA banner
 
 ```jsx
 <section className="rounded-2xl bg-amber-400/10 border border-amber-400/20
                     px-8 py-12 mb-8 text-center">
-  <h2 className="font-serif text-3xl text-amber-400 mb-4">Ready to order?</h2>
-  <p className="text-neutral-400 mb-6 max-w-md mx-auto">
+  <h2 className="font-serif text-3xl text-neutral-100 mb-4">Ready to order?</h2>
+  <p className="text-neutral-300 mb-6 max-w-md mx-auto">
     Browse our full menu and place your order in minutes.
   </p>
   <Link href="/menu"
     className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-8 py-4
-               text-base font-semibold text-neutral-950 transition-transform
-               duration-200 hover:scale-105 hover:bg-amber-300">
+               text-base font-semibold text-neutral-950 transition-all duration-200
+               hover:bg-amber-500 hover:scale-105
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
     Order Now →
   </Link>
 </section>
@@ -246,7 +396,6 @@ Three keyframe animations are added to `globals.css` using native CSS `@keyframe
 
 ### Metadata preservation
 
-The existing `metadata` export is preserved and enhanced:
 ```js
 export const metadata = {
   title: "Addis Eats — Authentic Ethiopian restaurant, menu & delivery",
@@ -254,50 +403,81 @@ export const metadata = {
 };
 ```
 
----
+### Full `page.js` structure
 
-## File Change Summary
+```js
+import Link from "next/link";
+import Image from "next/image";
+import { getDishes, getDishCardImage } from "@/lib/dishes";
+import { toSlug } from "./menu/slug";
 
-| File | Change |
-|------|--------|
-| `src/app/layout.js` | Reduce mobile padding; render `<MobileNav>` client island |
-| `src/app/MobileNav.jsx` | **New file** — `"use client"` hamburger nav island |
-| `src/app/globals.css` | Add `@keyframes` + `.scrollbar-none` utility |
-| `src/app/page.js` | Full rewrite — hero + featured dishes + CTA banner |
-| `src/app/menu/CategoryBar.jsx` | Horizontal scroll + `shrink-0` + `min-h-[44px]` on pills |
-| `src/app/menu/FilterShell.jsx` | `min-w-0` on sort label; `text-base sm:text-sm` on search input |
-| `src/app/cart/CartItems.jsx` | Wrap layout for mobile; `min-h-[44px]` on Remove button; full-width checkout link on mobile |
-| `src/app/checkout/CheckoutForm.jsx` | `text-base sm:text-sm` on inputs (iOS zoom fix) |
-| `src/app/menu/[slug]/page.jsx` | `text-3xl sm:text-4xl` on `<h1>` — no other changes |
+export const metadata = { /* ... */ };
 
-No new npm packages. No changes to API routes, kitchen, orders, or signin pages.
+export default async function HomePage() {
+  const allDishes = await getDishes();
+  const featuredIds = ["d1", "d8", "d9", "d11"];
+  const featuredDishes = allDishes.filter((d) => featuredIds.includes(d.id));
+
+  return (
+    <>
+      {/* Hero */}
+      {/* Featured dishes */}
+      {/* CTA banner */}
+    </>
+  );
+}
+
+function FeaturedDishCard({ dish, priority }) { /* ... */ }
+```
 
 ---
 
 ## Error Handling
 
-**Feature 1 — OG images:** `generateMetadata` already handles a missing dish gracefully — it returns `parent` metadata when no match is found, so the route renders without throwing. No new error handling needed.
+**Feature 1 — OG images:** `generateMetadata` returns `parent` metadata when no dish matches the slug — no runtime throw. No code change needed.
 
-**Feature 3 — Landing page:** `getDishes()` is a synchronous array return (no I/O, no network call). It cannot fail. If in future it becomes async with a network call, the `async` Server Component will propagate the error to the nearest `error.js` boundary — no special handling is needed at the page level.
+**Feature 3 — Landing page:** `getDishes()` is `async` but reads from an in-memory array — it resolves immediately with no I/O. If it ever throws (e.g., future DB migration), the async Server Component propagates the error to the nearest `error.js` boundary (`src/app/error.js` exists). No special `try/catch` needed at the page level.
 
-**Mobile nav client island:** `MobileNav` uses only `useState` and `Link`. No async operations, no error surface.
+**MobileNav:** Uses only `useState` and direct imports of `Link` and `signOut`. No async operations; no error surface.
 
 ---
 
 ## Edge Cases
 
-- **Very long dish names in cart**: The cart item layout change (flex-col on mobile) ensures the name wraps rather than overflows or truncates.
-- **CategoryBar with many categories**: Horizontal scroll handles an unlimited number of categories without wrapping. The `scrollbar-none` utility hides the browser scrollbar on mobile for a clean look; swipe gestures still work.
-- **Landing page on SSR**: `getDishes()` is synchronous so the landing page renders fully on the server with no Suspense needed.
-- **Hero min-height on short screens**: `min-h-[70vh]` with `py-16` means on a 568 px-tall iPhone SE the hero takes ~400 px — the subheadline and CTA remain visible without scrolling because the content is `flex flex-col items-center justify-center`.
-- **iOS input zoom**: All form inputs in `CheckoutForm` and the search input in `FilterShell` get `text-base` on mobile to prevent iOS Safari's auto-zoom behaviour on inputs with font-size < 16 px.
-- **Featured dish card images**: `getDishCardImage()` transforms `/dishes/doro-wat.webp` → `/dishes/display/card/doro-wat.webp`. All 4 chosen dish card images are confirmed present in `public/dishes/display/card/`.
+- **Very long dish names in cart:** The flex-col layout on mobile ensures names wrap rather than overflow.
+- **CategoryBar with many categories:** Horizontal scroll handles an arbitrary number of categories. The `@utility scrollbar-none` hides the scrollbar on mobile for a clean appearance; touch swipe still works.
+- **Landing page SSR:** `getDishes()` resolves from an in-memory array — fully synchronous after the `await`. No Suspense needed.
+- **Hero min-height on short screens:** `min-h-[70vh]` with `py-16` on a 568 px-tall iPhone SE gives ~400 px — all hero content fits. Content is `flex-col items-center justify-center` so nothing clips.
+- **iOS input zoom (CheckoutForm + FilterShell search):** All `<input>` elements get `text-base` (16 px) on mobile via `text-base sm:text-sm` to prevent iOS Safari auto-zoom on focus.
+- **Featured dish card priority:** The first card (`priority={index === 0}`) gets `fetchPriority="high"` on its `<Image>` so the LCP element on the landing page loads with high network priority.
+- **`toSlug` import path from `page.js`:** The slug utility is at `src/app/menu/slug.js`. From `src/app/page.js`, the import is `import { toSlug } from "./menu/slug"` (relative) or `@/app/menu/slug` (alias). Either works; use the relative path to match the pattern used in `DishCard.jsx`.
 
 ---
 
 ## Testability
 
-- **Unit**: `toSlug()` + OG filename mapping is fully unit-testable by running `toSlug(dish.name)` against each dish in `dishes.js` and asserting it equals the corresponding filename stem — no test framework needed beyond Node's `assert`.
-- **Build-time verification**: `npm run build` with `generateStaticParams` will attempt to render all 13 dish pages; any missing OG file or broken `generateMetadata` will surface as a build error.
-- **Visual**: The landing page and mobile nav can be tested by resizing the browser to 320 px and 375 px. Automated: a Playwright test could visit `/` at 375 px and assert the hero `<h1>` is visible and the "Explore the Menu →" link exists with `href="/menu"`.
-- **Mobile tap targets**: Chrome DevTools touch simulation at 375 px + accessibility panel will flag any element below 44 × 44 px.
+- **Unit:** `toSlug(dish.name)` against each of the 13 dish names can be checked with a plain Node script — all 13 were verified to match the OG JPEG basenames.
+- **Build-time:** `npm run build` runs `generateStaticParams` for all 13 dish pages. Any broken `generateMetadata` or missing OG file surfaces as a build error.
+- **Visual mobile:** Resize browser to 320 px, verify: no horizontal scrollbar on any page, all buttons ≥44 px, hero visible on landing page.
+- **Contrast:** The hero uses near-black (`#17211b`) text on near-white (`#f5f8f6`) background — approximately 15:1 contrast, well above WCAG AA (4.5:1).
+- **iOS zoom:** Open checkout and menu pages on iOS Safari; inputs must not trigger viewport zoom on focus.
+
+---
+
+## Responses to Review Findings
+
+| # | Severity | Finding | Response |
+|---|----------|---------|----------|
+| 1 | HIGH | Hero text unreadable (near-black on dark-green) | **Addressed.** Hero background changed to `bg-neutral-900` (`#f5f8f6`). Text uses `text-neutral-100` (`#17211b` near-black) on a near-white background — ~15:1 contrast. |
+| 2 | HIGH | `hover:bg-amber-300` = `hover:bg-amber-400` (identical, no visual change) | **Addressed.** All CTA hover states changed to `hover:bg-amber-500` (`#166634`), which is visibly darker than `amber-400` (`#15803d`). |
+| 3 | HIGH | `getDishes()` is async — landing page needs `async` + `await` | **Addressed.** `HomePage` is declared `async function HomePage()` and uses `const allDishes = await getDishes()`. |
+| 4 | MEDIUM | `og:title` format ambiguous between `<title>` and `openGraph.title` | **Addressed.** Explicit note added to Feature 1: do not modify the `title` field; only `openGraph.title` carries the full suffix. |
+| 5 | MEDIUM | Contradictory negative-margin bleed vs. contained hero in same paragraph | **Addressed.** All mention of negative-margin bleed removed. Design states once: contained hero with gradient background, no negative margins. |
+| 6 | MEDIUM | `MobileNav` props omit `signOut` — no guidance on how client component calls it | **Addressed.** `MobileNav` imports `signOut` directly from `@/app/actions`. This is valid per in-repo docs (`use-server.md`). Props spec is `{ session: { name, role } | null }`. |
+| 7 | MEDIUM | `getDishCardImage` import missing from `page.js` sketch | **Addressed.** Added to import line: `import { getDishes, getDishCardImage } from "@/lib/dishes"`. |
+| 8 | MEDIUM | `scrollbar-none` must use `@utility` in Tailwind v4 | **Addressed.** Changed to `@utility scrollbar-none { scrollbar-width: none; &::-webkit-scrollbar { display: none; } }`. |
+| 9 | MEDIUM | Sort/count row not addressed — overflows at 320 px | **Addressed.** Outer sort/count `<div>` changed to `flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between`. |
+| 10 | NIT | Checkout link tap-target already met — design overstates it | **Addressed.** Change to `block w-full` labelled explicitly as optional UX enhancement, not a required fix. |
+| 11 | NIT | Design makes no mention of checking in-repo docs (AGENTS.md requirement) | **Addressed.** Added explicit instruction at top of design: check `node_modules/next/dist/docs/` before writing any code. |
+| 12 | NIT | `FeaturedDishCard` inlined — note intent | **Addressed.** Added comment in code sketch: "Extract to a separate file if client interactivity is needed." |
+| 13 | NIT | `animate-[...]` token order non-obvious | **Addressed.** Code comment added explaining 5-token order: name · duration · delay · timing-function · fill-mode. |

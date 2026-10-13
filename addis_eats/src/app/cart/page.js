@@ -1,8 +1,3 @@
-// Server component shell — no "use client".
-// CartItems is the client leaf that reads cart context.
-// Moving "use client" down the tree keeps this page's
-// server-rendered HTML in the initial payload and reduces
-// the JS the browser must parse before becoming interactive (TBT).
 import CartItems from "./CartItems";
 
 export const metadata = {

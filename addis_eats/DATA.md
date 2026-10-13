@@ -10,6 +10,8 @@ only for interaction-driven reads that must refresh from input.**
 | Data | Where it runs | Key / entry point | Refresh rule | Why (one line) |
 | --- | --- | --- | --- | --- |
 | Menu and dishes | Server | `getDishes()` in `src/lib/dishes.js` | `revalidate = 3600` is exported, but the root layout reads the session cookie, so the route renders dynamically | Public content, indexable, cacheable — and the trade-off is documented rather than hidden |
+| Landing page sections | Server | `getDishes()` in `src/app/page.js` (course groups, signature picks, greeting) | Same as the menu: dynamic because of the layout's session cookie | The home page shows the live catalogue, so a dish added in the kitchen appears on the next request |
+| Open / closed pill | Client | `OpenStatus.jsx` → `Intl` with `Africa/Addis_Ababa` | Recomputed every 60 s, filled in after mount | "Open now" depends on the visitor's current time, not on server data; mount-gating avoids a hydration mismatch |
 | Order history | Server | `getOrders()` + scoped filter in `src/app/orders/page.js:16-18` | Rendered per request (dynamic) | Personal data must be scoped to the signed-in user |
 | Order detail / ownership | Server | `getOrderById(id)` in `src/app/orders/[id]/page.js:22` | Rendered per request | The id is looked up first, then authorised; a mismatch is a 404 |
 | Live order status | Server first, then client | `OrderStatusClient.jsx` → `GET /api/orders/[id]` | SWR `refreshInterval` 5 s, stops on `delivered`/`cancelled` | The view is user-specific, but the status must refresh without a full reload |

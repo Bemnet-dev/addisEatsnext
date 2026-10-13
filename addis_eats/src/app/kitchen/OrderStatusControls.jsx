@@ -9,14 +9,7 @@ const FLOW = [
   { status: "delivered", label: "Mark delivered" },
 ];
 
-/**
- * Kitchen controls. Every click runs the server action, which checks
- * session → role (staff only) → order existence before mutating.
- *
- * The customer's /orders/[id] screen polls every 5 s, so marking an order
- * "preparing" here shows up on the customer's phone without a reload — that
- * is the live-data demonstration for the presentation.
- */
+
 export default function OrderStatusControls({ orderId, status }) {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState(null);

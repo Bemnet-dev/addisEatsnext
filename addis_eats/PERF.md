@@ -48,6 +48,15 @@ LCP element changed from a headline to a photo. The comparison that matters is *
 optimisation* vs *photographs after optimisation* (2.4 s → 1.8 s from the `priority` fix alone), and
 ultimately the deployed figures above.
 
+### Stale by design: the `/` row above predates the dynamic landing page
+
+The home page was a text-only stub when the 2026-10-10 report was run. On 2026-10-13 it was replaced with
+a dynamic landing page whose LCP element is now a photo — the pre-cropped 900 × 506 `doro-wat.webp`
+(46.7 kB, `priority` + `fetchPriority="high"`, same asset as the dish detail page, well inside the
+150 kB image budget). Expect `/` to track `/menu/[slug]` (2.28 s, image LCP) rather than the 1.60 s
+headline LCP recorded above; the row is left unchanged rather than restated from a guess — re-run
+Lighthouse CLI against the next deployment to refresh it.
+
 ---
 
 ## Image sizes (static assets)
